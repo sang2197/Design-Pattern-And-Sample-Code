@@ -20,83 +20,83 @@ Ba ví dụ dưới đây minh họa CQRS ở các
 
 ### Ví dụ 1 — Command thêm mới dữ liệu
 
-public class CreateProductCommand : IRequest<Unit>
-{
-    public CreateProductModel Model { get; set; }
-
-    public CreateProductCommand(CreateProductModel model)
+    public class CreateProductCommand : IRequest<Unit>
     {
-        Model = model;
-    }
+        public CreateProductModel Model { get; set; }
 
-    public class Handler : IRequestHandler<CreateProductCommand, Unit>
-    {
-        private readonly WriteDataContext _dataContext;
-
-        public Handler(WriteDataContext dataContext)
+        public CreateProductCommand(CreateProductModel model)
         {
-            _dataContext = dataContext;
+            Model = model;
         }
 
-        public async Task<Unit> Handle(CreateProductCommand request, CancellationToken cancellationToken)
+        public class Handler : IRequestHandler<CreateProductCommand, Unit>
         {
-            var model = request.Model;
+            private readonly WriteDataContext _dataContext;
 
-            var entity = AutoMapperUtils.AutoMap<CreateProductModel, Product>(model);
+            public Handler(WriteDataContext dataContext)
+            {
+                _dataContext = dataContext;
+            }
 
-            await _dataContext.Products.AddAsync(entity);
-            await _dataContext.SaveChangesAsync();
+            public async Task<Unit> Handle(CreateProductCommand request, CancellationToken cancellationToken)
+            {
+                var model = request.Model;
 
-            return Unit.Value;
+                var entity = AutoMapperUtils.AutoMap<CreateProductModel, Product>(model);
+
+                await _dataContext.Products.AddAsync(entity);
+                await _dataContext.SaveChangesAsync();
+
+                return Unit.Value;
+            }
         }
     }
-}
 
 ### Ví dụ 2 — Query lấy thông tin bản ghi
 
-public class GetProductByIdQuery : IRequest<ProductModel>
-{
-    public int Id { get; set; }
-
-    public GetProductByIdQuery(int id)
+    public class GetProductByIdQuery : IRequest<ProductModel>
     {
-        Id = id;
-    }
+        public int Id { get; set; }
 
-    public class Handler : IRequestHandler<GetProductByIdQuery, ProductModel>
-    {
-        private readonly ReadDataContext _dataContext;
-
-        public Handler(ReadDataContext dataContext)
+        public GetProductByIdQuery(int id)
         {
-            _dataContext = dataContext;
+            Id = id;
         }
 
-        public async Task<ProductModel> Handle(GetProductByIdQuery request, CancellationToken cancellationToken)
+        public class Handler : IRequestHandler<GetProductByIdQuery, ProductModel>
         {
-            var id = request.Id;
-            var entity = await _dataContext.Products.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+            private readonly ReadDataContext _dataContext;
 
-            return AutoMapperUtils.AutoMap<Product, ProductModel>(entity);
+            public Handler(ReadDataContext dataContext)
+            {
+                _dataContext = dataContext;
+            }
+
+            public async Task<ProductModel> Handle(GetProductByIdQuery request, CancellationToken cancellationToken)
+            {
+                var id = request.Id;
+                var entity = await _dataContext.Products.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+
+                return AutoMapperUtils.AutoMap<Product, ProductModel>(entity);
+            }
         }
     }
-}
 
 
 ### Ví dụ 3 - Cấu hình 2 database
 
-#region Config database
-string systemDBWrite = String.Format(configuration["Database:System:ConnectionString:MSSQLDatabase"], configuration["uid"], configuration["password"]);
-services.AddDbContext<WriteDataContext>(x =>
-{
-    x.UseSqlServer(systemDBWrite);
-    x.EnableSensitiveDataLogging();
-});
+    #region Config database
+    string systemDBWrite = String.Format(configuration["Database:System:ConnectionString:MSSQLDatabase"], configuration["uid"], configuration["password"]);
+    services.AddDbContext<WriteDataContext>(x =>
+    {
+        x.UseSqlServer(systemDBWrite);
+        x.EnableSensitiveDataLogging();
+    });
 
-string systemDBRead = String.Format(configuration["Database:System:ConnectionString:MSSQLDatabaseRead"], configuration["uid"], configuration["password"]);
-services.AddDbContext<ReadDataContext>(x =>
-{
-    x.UseSqlServer(systemDBRead);
-    x.EnableSensitiveDataLogging();
-});
-#endregion Config database
+    string systemDBRead = String.Format(configuration["Database:System:ConnectionString:MSSQLDatabaseRead"], configuration["uid"], configuration["password"]);
+    services.AddDbContext<ReadDataContext>(x =>
+    {
+        x.UseSqlServer(systemDBRead);
+        x.EnableSensitiveDataLogging();
+    });
+    #endregion Config database
