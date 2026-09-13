@@ -21,107 +21,113 @@ Pattern gồm 4 thành phần:
 
 ### Ví dụ 1 — Command, Receiver, Invoker cơ bản
 
-    public interface ICommand
+```csharp
+public interface ICommand
+{
+    void Execute();
+    void Undo();
+}
+
+public class TextDocument
+{
+    public string Content { get; private set; } = "";
+
+    public void InsertText(string text, int position)
     {
-        void Execute();
-        void Undo();
+        Content = Content.Insert(position, text);
     }
 
-    public class TextDocument
+    public void DeleteText(int position, int length)
     {
-        public string Content { get; private set; } = "";
+        Content = Content.Remove(position, length);
+    }
+}
 
-        public void InsertText(string text, int position)
-        {
-            Content = Content.Insert(position, text);
-        }
+public class InsertTextCommand : ICommand
+{
+    private readonly TextDocument _document;
+    private readonly string _text;
+    private readonly int _position;
 
-        public void DeleteText(int position, int length)
-        {
-            Content = Content.Remove(position, length);
-        }
+    public InsertTextCommand(TextDocument document, string text, int position)
+    {
+        _document = document;
+        _text = text;
+        _position = position;
     }
 
-    public class InsertTextCommand : ICommand
+    public void Execute()
     {
-        private readonly TextDocument _document;
-        private readonly string _text;
-        private readonly int _position;
-
-        public InsertTextCommand(TextDocument document, string text, int position)
-        {
-            _document = document;
-            _text = text;
-            _position = position;
-        }
-
-        public void Execute()
-        {
-            _document.InsertText(_text, _position);
-        }
-
-        public void Undo()
-        {
-            _document.DeleteText(_position, _text.Length);
-        }
+        _document.InsertText(_text, _position);
     }
 
-    public class CommandInvoker
+    public void Undo()
     {
-        public void ExecuteCommand(ICommand command)
-        {
-            command.Execute();
-        }
+        _document.DeleteText(_position, _text.Length);
     }
+}
+
+public class CommandInvoker
+{
+    public void ExecuteCommand(ICommand command)
+    {
+        command.Execute();
+    }
+}
+```
 
 ### Ví dụ 2 — Undo/Redo bằng lịch sử Command
 
-    public class CommandInvoker
+```csharp
+public class CommandInvoker
+{
+    private readonly Stack<ICommand> _history = new Stack<ICommand>();
+
+    public void ExecuteCommand(ICommand command)
     {
-        private readonly Stack<ICommand> _history = new Stack<ICommand>();
-
-        public void ExecuteCommand(ICommand command)
-        {
-            command.Execute();
-            _history.Push(command);
-        }
-
-        public void Undo()
-        {
-            if (_history.Count == 0)
-            {
-                return;
-            }
-
-            var lastCommand = _history.Pop();
-            lastCommand.Undo();
-        }
+        command.Execute();
+        _history.Push(command);
     }
+
+    public void Undo()
+    {
+        if (_history.Count == 0)
+        {
+            return;
+        }
+
+        var lastCommand = _history.Pop();
+        lastCommand.Undo();
+    }
+}
+```
 
 ### Ví dụ 3 — Macro Command (gộp nhiều Command chạy tuần tự)
 
-    public class MacroCommand : ICommand
+```csharp
+public class MacroCommand : ICommand
+{
+    private readonly List<ICommand> _commands;
+
+    public MacroCommand(List<ICommand> commands)
     {
-        private readonly List<ICommand> _commands;
+        _commands = commands;
+    }
 
-        public MacroCommand(List<ICommand> commands)
+    public void Execute()
+    {
+        foreach (var command in _commands)
         {
-            _commands = commands;
-        }
-
-        public void Execute()
-        {
-            foreach (var command in _commands)
-            {
-                command.Execute();
-            }
-        }
-
-        public void Undo()
-        {
-            for (int i = _commands.Count - 1; i >= 0; i--)
-            {
-                _commands[i].Undo();
-            }
+            command.Execute();
         }
     }
+
+    public void Undo()
+    {
+        for (int i = _commands.Count - 1; i >= 0; i--)
+        {
+            _commands[i].Undo();
+        }
+    }
+}
+```

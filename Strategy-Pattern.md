@@ -22,77 +22,83 @@ Pattern gồm 3 thành phần:
 
 ### Ví dụ 1 — Strategy interface và ConcreteStrategy
 
-    public interface IDiscountStrategy
+```csharp
+public interface IDiscountStrategy
+{
+    decimal Apply(decimal orderTotal);
+}
+
+public class NoDiscount : IDiscountStrategy
+{
+    public decimal Apply(decimal orderTotal) => orderTotal;
+}
+
+public class PercentageDiscount : IDiscountStrategy
+{
+    private readonly decimal _percent;
+
+    public PercentageDiscount(decimal percent)
     {
-        decimal Apply(decimal orderTotal);
+        _percent = percent;
     }
 
-    public class NoDiscount : IDiscountStrategy
+    public decimal Apply(decimal orderTotal) => orderTotal - (orderTotal * _percent / 100);
+}
+
+public class FixedAmountDiscount : IDiscountStrategy
+{
+    private readonly decimal _amount;
+
+    public FixedAmountDiscount(decimal amount)
     {
-        public decimal Apply(decimal orderTotal) => orderTotal;
+        _amount = amount;
     }
 
-    public class PercentageDiscount : IDiscountStrategy
-    {
-        private readonly decimal _percent;
-
-        public PercentageDiscount(decimal percent)
-        {
-            _percent = percent;
-        }
-
-        public decimal Apply(decimal orderTotal) => orderTotal - (orderTotal * _percent / 100);
-    }
-
-    public class FixedAmountDiscount : IDiscountStrategy
-    {
-        private readonly decimal _amount;
-
-        public FixedAmountDiscount(decimal amount)
-        {
-            _amount = amount;
-        }
-
-        public decimal Apply(decimal orderTotal) => Math.Max(0, orderTotal - _amount);
-    }
+    public decimal Apply(decimal orderTotal) => Math.Max(0, orderTotal - _amount);
+}
+```
 
 ### Ví dụ 2 — Context sử dụng Strategy
 
-    public class OrderContext
+```csharp
+public class OrderContext
+{
+    private IDiscountStrategy _discountStrategy;
+
+    public OrderContext(IDiscountStrategy discountStrategy)
     {
-        private IDiscountStrategy _discountStrategy;
-
-        public OrderContext(IDiscountStrategy discountStrategy)
-        {
-            _discountStrategy = discountStrategy;
-        }
-
-        // Cho phép đổi Strategy ngay tại runtime
-        public void SetDiscountStrategy(IDiscountStrategy discountStrategy)
-        {
-            _discountStrategy = discountStrategy;
-        }
-
-        public decimal CalculateTotal(decimal orderTotal)
-        {
-            return _discountStrategy.Apply(orderTotal);
-        }
+        _discountStrategy = discountStrategy;
     }
+
+    // Cho phép đổi Strategy ngay tại runtime
+    public void SetDiscountStrategy(IDiscountStrategy discountStrategy)
+    {
+        _discountStrategy = discountStrategy;
+    }
+
+    public decimal CalculateTotal(decimal orderTotal)
+    {
+        return _discountStrategy.Apply(orderTotal);
+    }
+}
+```
 
 ### Ví dụ 3 — Chọn Strategy theo điều kiện nghiệp vụ tại nơi gọi
 
-    public class CheckoutService
+```csharp
+public class CheckoutService
+{
+    public decimal Checkout(decimal orderTotal, string customerType)
     {
-        public decimal Checkout(decimal orderTotal, string customerType)
+        IDiscountStrategy strategy = customerType switch
         {
-            IDiscountStrategy strategy = customerType switch
-            {
-                "vip" => new PercentageDiscount(20),
-                "member" => new FixedAmountDiscount(50000),
-                _ => new NoDiscount()
-            };
+            "vip" => new PercentageDiscount(20),
+            "member" => new FixedAmountDiscount(50000),
+            _ => new NoDiscount()
+        };
 
-            var context = new OrderContext(strategy);
-            return context.CalculateTotal(orderTotal);
-        }
+        var context = new OrderContext(strategy);
+        return context.CalculateTotal(orderTotal);
     }
+}
+```

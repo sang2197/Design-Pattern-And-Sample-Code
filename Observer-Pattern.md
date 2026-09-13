@@ -22,72 +22,78 @@ Pattern gồm 4 thành phần:
 
 ### Ví dụ 1 — Observer interface và Subject
 
-    public interface IOrderObserver
+```csharp
+public interface IOrderObserver
+{
+    void Update(string orderId, string newStatus);
+}
+
+public class OrderSubject
+{
+    private readonly List<IOrderObserver> _observers = new List<IOrderObserver>();
+
+    public void Subscribe(IOrderObserver observer)
     {
-        void Update(string orderId, string newStatus);
+        _observers.Add(observer);
     }
 
-    public class OrderSubject
+    public void Unsubscribe(IOrderObserver observer)
     {
-        private readonly List<IOrderObserver> _observers = new List<IOrderObserver>();
+        _observers.Remove(observer);
+    }
 
-        public void Subscribe(IOrderObserver observer)
+    public void ChangeStatus(string orderId, string newStatus)
+    {
+        // Subject không biết và không quan tâm từng Observer xử lý ra sao
+        foreach (var observer in _observers)
         {
-            _observers.Add(observer);
-        }
-
-        public void Unsubscribe(IOrderObserver observer)
-        {
-            _observers.Remove(observer);
-        }
-
-        public void ChangeStatus(string orderId, string newStatus)
-        {
-            // Subject không biết và không quan tâm từng Observer xử lý ra sao
-            foreach (var observer in _observers)
-            {
-                observer.Update(orderId, newStatus);
-            }
+            observer.Update(orderId, newStatus);
         }
     }
+}
+```
 
 ### Ví dụ 2 — Các ConcreteObserver
 
-    public class EmailNotifier : IOrderObserver
+```csharp
+public class EmailNotifier : IOrderObserver
+{
+    public void Update(string orderId, string newStatus)
     {
-        public void Update(string orderId, string newStatus)
-        {
-            Console.WriteLine($"[Email] Don hang {orderId} chuyen sang trang thai: {newStatus}");
-        }
+        Console.WriteLine($"[Email] Don hang {orderId} chuyen sang trang thai: {newStatus}");
     }
+}
 
-    public class InventoryUpdater : IOrderObserver
+public class InventoryUpdater : IOrderObserver
+{
+    public void Update(string orderId, string newStatus)
     {
-        public void Update(string orderId, string newStatus)
+        if (newStatus == "Cancelled")
         {
-            if (newStatus == "Cancelled")
-            {
-                Console.WriteLine($"[Inventory] Hoan tra ton kho cho don hang {orderId}");
-            }
+            Console.WriteLine($"[Inventory] Hoan tra ton kho cho don hang {orderId}");
         }
     }
+}
+```
 
 ### Ví dụ 3 — Đăng ký và kích hoạt sự kiện tại nơi gọi
 
-    var orderSubject = new OrderSubject();
+```csharp
+var orderSubject = new OrderSubject();
 
-    orderSubject.Subscribe(new EmailNotifier());
-    orderSubject.Subscribe(new InventoryUpdater());
+orderSubject.Subscribe(new EmailNotifier());
+orderSubject.Subscribe(new InventoryUpdater());
 
-    // Thêm một Observer mới (ví dụ SmsNotifier) không cần sửa OrderSubject
-    orderSubject.Subscribe(new SmsNotifier());
+// Thêm một Observer mới (ví dụ SmsNotifier) không cần sửa OrderSubject
+orderSubject.Subscribe(new SmsNotifier());
 
-    orderSubject.ChangeStatus("DH0001", "Cancelled");
+orderSubject.ChangeStatus("DH0001", "Cancelled");
 
-    public class SmsNotifier : IOrderObserver
+public class SmsNotifier : IOrderObserver
+{
+    public void Update(string orderId, string newStatus)
     {
-        public void Update(string orderId, string newStatus)
-        {
-            Console.WriteLine($"[SMS] Don hang {orderId}: {newStatus}");
-        }
+        Console.WriteLine($"[SMS] Don hang {orderId}: {newStatus}");
     }
+}
+```

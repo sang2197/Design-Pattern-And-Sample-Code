@@ -23,84 +23,90 @@ Các thành phần chính:
 
 ### Ví dụ 1 — Product và fluent Builder
 
-    public class HttpRequest
+```csharp
+public class HttpRequest
+{
+    public string Url { get; set; }
+    public string Method { get; set; } = "GET";
+    public Dictionary<string, string> Headers { get; } = new Dictionary<string, string>();
+    public string Body { get; set; }
+}
+
+public class HttpRequestBuilder
+{
+    private readonly HttpRequest _request = new HttpRequest();
+
+    public HttpRequestBuilder WithUrl(string url)
     {
-        public string Url { get; set; }
-        public string Method { get; set; } = "GET";
-        public Dictionary<string, string> Headers { get; } = new Dictionary<string, string>();
-        public string Body { get; set; }
+        _request.Url = url;
+        return this;
     }
 
-    public class HttpRequestBuilder
+    public HttpRequestBuilder WithMethod(string method)
     {
-        private readonly HttpRequest _request = new HttpRequest();
-
-        public HttpRequestBuilder WithUrl(string url)
-        {
-            _request.Url = url;
-            return this;
-        }
-
-        public HttpRequestBuilder WithMethod(string method)
-        {
-            _request.Method = method;
-            return this;
-        }
-
-        public HttpRequestBuilder AddHeader(string key, string value)
-        {
-            _request.Headers[key] = value;
-            return this;
-        }
-
-        public HttpRequestBuilder WithBody(string body)
-        {
-            _request.Body = body;
-            return this;
-        }
-
-        public HttpRequest Build()
-        {
-            if (string.IsNullOrEmpty(_request.Url))
-            {
-                throw new InvalidOperationException("Url is required");
-            }
-
-            return _request;
-        }
+        _request.Method = method;
+        return this;
     }
+
+    public HttpRequestBuilder AddHeader(string key, string value)
+    {
+        _request.Headers[key] = value;
+        return this;
+    }
+
+    public HttpRequestBuilder WithBody(string body)
+    {
+        _request.Body = body;
+        return this;
+    }
+
+    public HttpRequest Build()
+    {
+        if (string.IsNullOrEmpty(_request.Url))
+        {
+            throw new InvalidOperationException("Url is required");
+        }
+
+        return _request;
+    }
+}
+```
 
 ### Ví dụ 2 — Sử dụng tại nơi gọi
 
-    var request = new HttpRequestBuilder()
-        .WithUrl("https://api.example.com/products")
-        .WithMethod("POST")
-        .AddHeader("Authorization", "Bearer token123")
-        .AddHeader("Content-Type", "application/json")
-        .WithBody("{\"name\":\"Product A\"}")
-        .Build();
+```csharp
+var request = new HttpRequestBuilder()
+    .WithUrl("https://api.example.com/products")
+    .WithMethod("POST")
+    .AddHeader("Authorization", "Bearer token123")
+    .AddHeader("Content-Type", "application/json")
+    .WithBody("{\"name\":\"Product A\"}")
+    .Build();
+```
 
 ### Ví dụ 3 — Director dựng sẵn các cấu hình thường dùng
 
-    public class HttpRequestDirector
+```csharp
+public class HttpRequestDirector
+{
+    public HttpRequest BuildJsonGetRequest(string url)
     {
-        public HttpRequest BuildJsonGetRequest(string url)
-        {
-            return new HttpRequestBuilder()
-                .WithUrl(url)
-                .WithMethod("GET")
-                .AddHeader("Accept", "application/json")
-                .Build();
-        }
-
-        public HttpRequest BuildAuthorizedPostRequest(string url, string token, string body)
-        {
-            return new HttpRequestBuilder()
-                .WithUrl(url)
-                .WithMethod("POST")
-                .AddHeader("Authorization", $"Bearer {token}")
-                .AddHeader("Content-Type", "application/json")
-                .WithBody(body)
-                .Build();
-        }
+        return new HttpRequestBuilder()
+            .WithUrl(url)
+            .WithMethod("GET")
+            .AddHeader("Accept", "application/json")
+            .Build();
     }
+
+    public HttpRequest BuildAuthorizedPostRequest(string url, string token, string body)
+    {
+        return new HttpRequestBuilder()
+            .WithUrl(url)
+            .WithMethod("POST")
+            .AddHeader("Authorization", $"Bearer {token}")
+            .AddHeader("Content-Type", "application/json")
+            .WithBody(body)
+            .Build();
+    }
+}
+```

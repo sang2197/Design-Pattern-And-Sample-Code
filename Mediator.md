@@ -19,126 +19,132 @@
 
 ### Ví dụ 1 — Định nghĩa Request và Handler
 
-    public class DeleteProductCommand : IRequest<Unit>
-    {
-        public int Id { get; set; }
+```csharp
+public class DeleteProductCommand : IRequest<Unit>
+{
+    public int Id { get; set; }
 
-        public DeleteProductCommand(int id)
+    public DeleteProductCommand(int id)
+    {
+        Id = id;
+    }
+
+    public class Handler : IRequestHandler<DeleteProductCommand, Unit>
+    {
+        private readonly WriteDataContext _dataContext;
+
+        public Handler(WriteDataContext dataContext)
         {
-            Id = id;
+            _dataContext = dataContext;
         }
 
-        public class Handler : IRequestHandler<DeleteProductCommand, Unit>
+        public async Task<Unit> Handle(DeleteProductCommand request, CancellationToken cancellationToken)
         {
-            private readonly WriteDataContext _dataContext;
-
-            public Handler(WriteDataContext dataContext)
+            var entity = await _dataContext.Products.FirstOrDefaultAsync(x => x.Id == request.Id);
+            if (entity == null)
             {
-                _dataContext = dataContext;
+                throw new ArgumentException("Product not found");
             }
 
-            public async Task<Unit> Handle(DeleteProductCommand request, CancellationToken cancellationToken)
-            {
-                var entity = await _dataContext.Products.FirstOrDefaultAsync(x => x.Id == request.Id);
-                if (entity == null)
-                {
-                    throw new ArgumentException("Product not found");
-                }
+            _dataContext.Products.Remove(entity);
+            await _dataContext.SaveChangesAsync();
 
-                _dataContext.Products.Remove(entity);
-                await _dataContext.SaveChangesAsync();
-
-                return Unit.Value;
-            }
+            return Unit.Value;
         }
     }
+}
+```
 
 ### Ví dụ 2 — Gọi trên Controller/Router
 
-    [ApiController, Route("api/products")]
-    public class ProductController : ControllerBase
+```csharp
+[ApiController, Route("api/products")]
+public class ProductController : ControllerBase
+{
+    private readonly IMediator _mediator;
+
+    public ProductController(IMediator mediator)
     {
-        private readonly IMediator _mediator;
-
-        public ProductController(IMediator mediator)
-        {
-            _mediator = mediator;
-        }
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            await _mediator.Send(new DeleteProductCommand(id));
-            return NoContent();
-        }
+        _mediator = mediator;
     }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        await _mediator.Send(new DeleteProductCommand(id));
+        return NoContent();
+    }
+}
+```
 
 ### Ví dụ 3 — Gọi từ Handler khác (xóa A kéo theo xóa B)
 
-    public class DeleteProductCommand : IRequest<Unit>
+```csharp
+public class DeleteProductCommand : IRequest<Unit>
+{
+    public int Id { get; set; }
+
+    public DeleteProductCommand(int id)
     {
-        public int Id { get; set; }
-
-        public DeleteProductCommand(int id)
-        {
-            Id = id;
-        }
-
-        public class Handler : IRequestHandler<DeleteProductCommand, Unit>
-        {
-            private readonly WriteDataContext _dataContext;
-            private readonly IMediator _mediator;
-
-            public Handler(WriteDataContext dataContext, IMediator mediator)
-            {
-                _dataContext = dataContext;
-                _mediator = mediator;
-            }
-
-            public async Task<Unit> Handle(DeleteProductCommand request, CancellationToken cancellationToken)
-            {
-                var entity = await _dataContext.Products.FirstOrDefaultAsync(x => x.Id == request.Id);
-                if (entity == null)
-                {
-                    throw new ArgumentException("Product not found");
-                }
-
-                // Handler A gọi sang Handler B qua Mediator, không cần biết Handler B xử lý thế nào
-                await _mediator.Send(new DeleteProductImagesByProductIdCommand(entity.Id), cancellationToken);
-
-                _dataContext.Products.Remove(entity);
-                await _dataContext.SaveChangesAsync();
-
-                return Unit.Value;
-            }
-        }
+        Id = id;
     }
 
-    public class DeleteProductImagesByProductIdCommand : IRequest<Unit>
+    public class Handler : IRequestHandler<DeleteProductCommand, Unit>
     {
-        public int ProductId { get; set; }
+        private readonly WriteDataContext _dataContext;
+        private readonly IMediator _mediator;
 
-        public DeleteProductImagesByProductIdCommand(int productId)
+        public Handler(WriteDataContext dataContext, IMediator mediator)
         {
-            ProductId = productId;
+            _dataContext = dataContext;
+            _mediator = mediator;
         }
 
-        public class Handler : IRequestHandler<DeleteProductImagesByProductIdCommand, Unit>
+        public async Task<Unit> Handle(DeleteProductCommand request, CancellationToken cancellationToken)
         {
-            private readonly WriteDataContext _dataContext;
-
-            public Handler(WriteDataContext dataContext)
+            var entity = await _dataContext.Products.FirstOrDefaultAsync(x => x.Id == request.Id);
+            if (entity == null)
             {
-                _dataContext = dataContext;
+                throw new ArgumentException("Product not found");
             }
 
-            public async Task<Unit> Handle(DeleteProductImagesByProductIdCommand request, CancellationToken cancellationToken)
-            {
-                var images = _dataContext.ProductImages.Where(x => x.ProductId == request.ProductId);
-                _dataContext.ProductImages.RemoveRange(images);
-                await _dataContext.SaveChangesAsync();
+            // Handler A gọi sang Handler B qua Mediator, không cần biết Handler B xử lý thế nào
+            await _mediator.Send(new DeleteProductImagesByProductIdCommand(entity.Id), cancellationToken);
 
-                return Unit.Value;
-            }
+            _dataContext.Products.Remove(entity);
+            await _dataContext.SaveChangesAsync();
+
+            return Unit.Value;
         }
     }
+}
+
+public class DeleteProductImagesByProductIdCommand : IRequest<Unit>
+{
+    public int ProductId { get; set; }
+
+    public DeleteProductImagesByProductIdCommand(int productId)
+    {
+        ProductId = productId;
+    }
+
+    public class Handler : IRequestHandler<DeleteProductImagesByProductIdCommand, Unit>
+    {
+        private readonly WriteDataContext _dataContext;
+
+        public Handler(WriteDataContext dataContext)
+        {
+            _dataContext = dataContext;
+        }
+
+        public async Task<Unit> Handle(DeleteProductImagesByProductIdCommand request, CancellationToken cancellationToken)
+        {
+            var images = _dataContext.ProductImages.Where(x => x.ProductId == request.ProductId);
+            _dataContext.ProductImages.RemoveRange(images);
+            await _dataContext.SaveChangesAsync();
+
+            return Unit.Value;
+        }
+    }
+}
+```

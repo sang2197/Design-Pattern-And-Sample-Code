@@ -22,68 +22,74 @@ Pattern gồm 4 thành phần:
 
 ### Ví dụ 1 — Product và Creator
 
-    public interface IPaymentMethod
+```csharp
+public interface IPaymentMethod
+{
+    string Pay(decimal amount);
+}
+
+public class VnPayPayment : IPaymentMethod
+{
+    public string Pay(decimal amount) => $"Thanh toan {amount:N0} qua VNPay";
+}
+
+public class MomoPayment : IPaymentMethod
+{
+    public string Pay(decimal amount) => $"Thanh toan {amount:N0} qua Momo";
+}
+
+public abstract class CheckoutProcessor
+{
+    // Factory Method - để lớp con quyết định tạo IPaymentMethod nào
+    protected abstract IPaymentMethod CreatePaymentMethod();
+
+    // Logic nghiệp vụ dùng chung, chỉ phụ thuộc abstraction IPaymentMethod
+    public string Checkout(decimal amount)
     {
-        string Pay(decimal amount);
+        var payment = CreatePaymentMethod();
+        var result = payment.Pay(amount);
+
+        return $"[Checkout] {result}";
     }
-
-    public class VnPayPayment : IPaymentMethod
-    {
-        public string Pay(decimal amount) => $"Thanh toan {amount:N0} qua VNPay";
-    }
-
-    public class MomoPayment : IPaymentMethod
-    {
-        public string Pay(decimal amount) => $"Thanh toan {amount:N0} qua Momo";
-    }
-
-    public abstract class CheckoutProcessor
-    {
-        // Factory Method - để lớp con quyết định tạo IPaymentMethod nào
-        protected abstract IPaymentMethod CreatePaymentMethod();
-
-        // Logic nghiệp vụ dùng chung, chỉ phụ thuộc abstraction IPaymentMethod
-        public string Checkout(decimal amount)
-        {
-            var payment = CreatePaymentMethod();
-            var result = payment.Pay(amount);
-
-            return $"[Checkout] {result}";
-        }
-    }
+}
+```
 
 ### Ví dụ 2 — ConcreteCreator hiện thực Factory Method
 
-    public class VnPayCheckoutProcessor : CheckoutProcessor
+```csharp
+public class VnPayCheckoutProcessor : CheckoutProcessor
+{
+    protected override IPaymentMethod CreatePaymentMethod()
     {
-        protected override IPaymentMethod CreatePaymentMethod()
-        {
-            return new VnPayPayment();
-        }
+        return new VnPayPayment();
     }
+}
 
-    public class MomoCheckoutProcessor : CheckoutProcessor
+public class MomoCheckoutProcessor : CheckoutProcessor
+{
+    protected override IPaymentMethod CreatePaymentMethod()
     {
-        protected override IPaymentMethod CreatePaymentMethod()
-        {
-            return new MomoPayment();
-        }
+        return new MomoPayment();
     }
+}
+```
 
 ### Ví dụ 3 — Sử dụng tại nơi gọi
 
-    public class CheckoutController
+```csharp
+public class CheckoutController
+{
+    public string Handle(string method, decimal amount)
     {
-        public string Handle(string method, decimal amount)
+        // Chọn đúng ConcreteCreator, phần logic Checkout() dùng chung không đổi
+        CheckoutProcessor processor = method switch
         {
-            // Chọn đúng ConcreteCreator, phần logic Checkout() dùng chung không đổi
-            CheckoutProcessor processor = method switch
-            {
-                "vnpay" => new VnPayCheckoutProcessor(),
-                "momo" => new MomoCheckoutProcessor(),
-                _ => throw new ArgumentException("Payment method not supported")
-            };
+            "vnpay" => new VnPayCheckoutProcessor(),
+            "momo" => new MomoCheckoutProcessor(),
+            _ => throw new ArgumentException("Payment method not supported")
+        };
 
-            return processor.Checkout(amount);
-        }
+        return processor.Checkout(amount);
     }
+}
+```

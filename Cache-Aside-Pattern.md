@@ -20,6 +20,7 @@ Cache không tự động đồng bộ với DB (khác với Read-Through/Write-
 
 ### Ví dụ 1 — Đọc dữ liệu qua Cache-Aside (miss thì query DB rồi lưu lại cache)
 
+```csharp
 public class GetProductByIdQuery : IRequest<ProductModel>
 {
     public int Id { get; set; }
@@ -52,9 +53,11 @@ public class GetProductByIdQuery : IRequest<ProductModel>
         }
     }
 }
+```
 
 ### Ví dụ 2 — Reset cache khi dữ liệu bị thay đổi
 
+```csharp
 public class UpdateProductCommand : IRequest<Unit>
 {
     public UpdateProductModel Model { get; set; }
@@ -96,9 +99,11 @@ public class UpdateProductCommand : IRequest<Unit>
         }
     }
 }
+```
 
 ### Ví dụ 3 — Cache Key Builder (tổ chức key theo prefix, tránh đụng key giữa các loại dữ liệu)
 
+```csharp
 public static class ProductCacheKey
 {
     private const string Prefix = "PRODUCT";
@@ -113,3 +118,4 @@ public static class ProductCacheKey
         return $"{Prefix}-LIST";
     }
 }
+```

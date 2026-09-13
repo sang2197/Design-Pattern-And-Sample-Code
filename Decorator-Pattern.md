@@ -22,66 +22,72 @@ Pattern gồm 4 thành phần:
 
 ### Ví dụ 1 — Component và ConcreteComponent
 
-    public interface ICoffee
-    {
-        string Describe();
-        decimal Cost();
-    }
+```csharp
+public interface ICoffee
+{
+    string Describe();
+    decimal Cost();
+}
 
-    public class SimpleCoffee : ICoffee
-    {
-        public string Describe() => "Coffee";
+public class SimpleCoffee : ICoffee
+{
+    public string Describe() => "Coffee";
 
-        public decimal Cost() => 20000;
-    }
+    public decimal Cost() => 20000;
+}
+```
 
 ### Ví dụ 2 — Decorator abstract và các ConcreteDecorator
 
-    public abstract class CoffeeDecorator : ICoffee
+```csharp
+public abstract class CoffeeDecorator : ICoffee
+{
+    protected readonly ICoffee Inner;
+
+    protected CoffeeDecorator(ICoffee inner)
     {
-        protected readonly ICoffee Inner;
-
-        protected CoffeeDecorator(ICoffee inner)
-        {
-            Inner = inner;
-        }
-
-        public virtual string Describe() => Inner.Describe();
-
-        public virtual decimal Cost() => Inner.Cost();
+        Inner = inner;
     }
 
-    public class MilkDecorator : CoffeeDecorator
+    public virtual string Describe() => Inner.Describe();
+
+    public virtual decimal Cost() => Inner.Cost();
+}
+
+public class MilkDecorator : CoffeeDecorator
+{
+    public MilkDecorator(ICoffee inner) : base(inner)
     {
-        public MilkDecorator(ICoffee inner) : base(inner)
-        {
-        }
-
-        public override string Describe() => $"{Inner.Describe()} + Milk";
-
-        public override decimal Cost() => Inner.Cost() + 5000;
     }
 
-    public class SugarDecorator : CoffeeDecorator
+    public override string Describe() => $"{Inner.Describe()} + Milk";
+
+    public override decimal Cost() => Inner.Cost() + 5000;
+}
+
+public class SugarDecorator : CoffeeDecorator
+{
+    public SugarDecorator(ICoffee inner) : base(inner)
     {
-        public SugarDecorator(ICoffee inner) : base(inner)
-        {
-        }
-
-        public override string Describe() => $"{Inner.Describe()} + Sugar";
-
-        public override decimal Cost() => Inner.Cost() + 2000;
     }
+
+    public override string Describe() => $"{Inner.Describe()} + Sugar";
+
+    public override decimal Cost() => Inner.Cost() + 2000;
+}
+```
 
 ### Ví dụ 3 — Kết hợp nhiều Decorator tại runtime
 
-    // Client chỉ làm việc với ICoffee, không biết bên trong đang bọc bao nhiêu lớp
-    ICoffee order = new SugarDecorator(new MilkDecorator(new SimpleCoffee()));
+```csharp
+// Client chỉ làm việc với ICoffee, không biết bên trong đang bọc bao nhiêu lớp
+ICoffee order = new SugarDecorator(new MilkDecorator(new SimpleCoffee()));
 
-    Console.WriteLine(order.Describe()); // Coffee + Milk + Sugar
-    Console.WriteLine(order.Cost());     // 27000
+Console.WriteLine(order.Describe()); // Coffee + Milk + Sugar
+Console.WriteLine(order.Cost());     // 27000
 
-    // Tổ hợp khác nhau chỉ cần lồng Decorator khác nhau, không cần class mới
-    ICoffee anotherOrder = new MilkDecorator(new SimpleCoffee());
-    Console.WriteLine(anotherOrder.Describe()); // Coffee + Milk
-    Console.WriteLine(anotherOrder.Cost());     // 25000
+// Tổ hợp khác nhau chỉ cần lồng Decorator khác nhau, không cần class mới
+ICoffee anotherOrder = new MilkDecorator(new SimpleCoffee());
+Console.WriteLine(anotherOrder.Describe()); // Coffee + Milk
+Console.WriteLine(anotherOrder.Cost());     // 25000
+```
