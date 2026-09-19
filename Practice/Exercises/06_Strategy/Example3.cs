@@ -12,3 +12,48 @@ namespace Exercises.Strategy.Example3;
 //     constructor nhan ISortStrategy strategy
 //     SetStrategy(ISortStrategy) -> gan lai _strategy
 //     Sort(numbers) -> uy quyen cho _strategy.Sort(numbers)
+
+// Strategy
+public interface IFileStorage
+{
+    string Save(string fileName);
+}
+
+// Concrete
+public class LocalStorage : IFileStorage
+{
+    public string Save(string fileName) => $"Saved {fileName} to Local Storage";
+}
+
+public class S3Storage : IFileStorage
+{
+    public string Save(string fileName) => $"Saved {fileName} to Amazon S3";
+}
+
+// Context
+public class FileContext
+{
+    private IFileStorage _strategy;
+    public FileContext(IFileStorage strategy)
+    {
+        _strategy = strategy;
+    }
+
+    public string SaveFile(string fileName)
+    {
+        return _strategy.Save(fileName);
+    }
+}
+
+// Cách dùng
+public class Program
+{
+    public static void Main()
+    {
+        var localStorage = new FileContext(new LocalStorage());
+        Console.WriteLine(localStorage.SaveFile("file A"));
+
+        var s3Storage = new FileContext(new S3Storage());
+        Console.WriteLine(s3Storage.SaveFile("file B"));
+    }
+}

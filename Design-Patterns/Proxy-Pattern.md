@@ -10,35 +10,27 @@ Pattern gồm 3 thành phần:
 - **RealSubject:** đối tượng thật, chứa logic nghiệp vụ chính.
 - **Proxy:** hiện thực `Subject`, giữ tham chiếu tới `RealSubject` và kiểm soát quyền truy cập/lời gọi tới nó.
 
-## 2. Bài toán
+## 2. Khi nào nên dùng
 
-Có những trường hợp không nên (hoặc không thể) để Client truy cập trực tiếp vào `RealSubject`:
+Dùng khi:
 
-- `RealSubject` khởi tạo tốn kém (tải ảnh lớn, mở kết nối mạng...) nhưng không phải lúc nào Client cũng cần dùng ngay — khởi tạo quá sớm gây lãng phí tài nguyên.
-- Cần kiểm tra quyền truy cập trước khi cho phép gọi `RealSubject`, nhưng không muốn nhúng logic kiểm tra quyền thẳng vào `RealSubject` — điều đó sẽ trộn lẫn logic bảo mật với logic nghiệp vụ chính, vi phạm Single Responsibility.
-- Muốn cache lại kết quả gọi `RealSubject` để tránh phải gọi lại nhiều lần tốn kém (ví dụ truy vấn database), nhưng không muốn sửa code của `RealSubject` để nhúng logic cache vào.
+✅ Cần kiểm soát việc truy cập vào một object mà không sửa code của object đó
 
-Nếu để Client gọi thẳng `RealSubject`, mọi nhu cầu phụ này (trì hoãn khởi tạo, kiểm tra quyền, cache...) buộc phải nhúng thẳng vào chính `RealSubject`, khiến nó ngày càng cồng kềnh và làm nhiều việc không thuộc về nó.
+✅ Việc khởi tạo object thật tốn kém, muốn trì hoãn tới khi thực sự cần dùng
 
-## 3. Ý nghĩa của Proxy
+✅ Cần thêm kiểm tra quyền, logging hoặc cache trước khi gọi tới object thật
 
-- `Proxy` hiện thực **cùng interface** với `RealSubject`, nên Client sử dụng object đã được bọc **giống hệt như dùng trực tiếp `RealSubject`** — không cần biết có Proxy đứng giữa hay không (tính trong suốt/transparent).
-- **Tách logic kiểm soát truy cập** (trì hoãn khởi tạo, kiểm tra quyền, cache...) ra khỏi `RealSubject`, giữ `RealSubject` chỉ tập trung đúng vào nghiệp vụ chính của nó.
-- Có thể **trì hoãn khởi tạo `RealSubject`** tới khi thực sự cần dùng (Virtual Proxy) — tiết kiệm tài nguyên nếu `RealSubject` cuối cùng không được dùng tới.
-- Có thể **kiểm soát quyền truy cập** trước khi gọi `RealSubject` (Protection Proxy) mà hoàn toàn không phải sửa code của `RealSubject`.
-- Tuân thủ **Open/Closed Principle**: muốn thêm một kiểu kiểm soát truy cập mới (ví dụ thêm logging, thêm rate-limit) chỉ cần viết thêm một Proxy mới, không đụng vào `RealSubject` hay các Proxy khác đang có.
+✅ Muốn Client dùng Proxy y hệt như dùng trực tiếp object thật (trong suốt)
 
-## 4. Code mẫu
-
-Mỗi ví dụ dưới đây là một minh họa **đầy đủ** cho một loại Proxy khác nhau: nêu rõ khi nào nên dùng, cách sử dụng, cách hiện thực, và một `Main` chạy thử để in kết quả ra console.
+## 3. Code examples
 
 ### Ví dụ 1 — Virtual Proxy: trì hoãn tải ảnh lớn
 
-**Khi nào dùng:** tải ảnh từ đĩa tốn thời gian, chỉ nên tải khi thực sự cần hiển thị (`Display()`), không tải ngay lúc khởi tạo đối tượng ảnh.
+**Bài toán:** Ứng dụng cần hiển thị hình ảnh, nhưng việc tải ảnh từ đĩa tốn thời gian và tài nguyên. Nếu `RealImage` tải ảnh ngay trong constructor, thì mỗi lần khởi tạo danh sách ảnh (ví dụ một gallery với hàng trăm ảnh) toàn bộ ảnh sẽ bị tải ngay cả khi người dùng chưa thực sự xem tới, gây lãng phí tài nguyên và làm chậm ứng dụng. Nếu để Client tự kiểm tra "đã tải ảnh chưa" trước mỗi lần hiển thị, logic trì hoãn tải sẽ bị lặp lại ở mọi nơi gọi tới ảnh thay vì nằm gọn một chỗ.
 
-**Cách sử dụng:** Client làm việc với `IImage` như bình thường, không biết bên dưới là `ImageProxy` hay `RealImage`.
+**Ý nghĩa của Proxy trong ví dụ này:** `ImageProxy` hiện thực cùng interface `IImage` với `RealImage`, nên Client vẫn thao tác qua `IImage` như bình thường mà không biết đang làm việc với Proxy hay với ảnh thật. `ImageProxy` chỉ giữ tên file lúc khởi tạo, chưa tạo `RealImage`; đến khi `Display()` được gọi lần đầu tiên, nó mới khởi tạo `RealImage` — lúc đó ảnh mới thực sự được tải từ đĩa. Những lần gọi `Display()` sau đó tái sử dụng `RealImage` đã có sẵn nên không tải lại, thể hiện qua dòng `"Dang tai anh..."` chỉ xuất hiện đúng một lần dù `Display()` được gọi hai lần.
 
-**Cách hiện thực:** `ImageProxy` chỉ khởi tạo `RealImage` (và do đó chỉ tải ảnh) ở lần đầu tiên `Display()` được gọi; các lần gọi sau tái sử dụng `RealImage` đã có.
+**Cách implementation (C#):**
 
 ```csharp
 // Subject
@@ -91,8 +83,11 @@ public class ImageProxy : IImage
         _realImage.Display();
     }
 }
+```
 
-// Chạy thử
+**Cách sử dụng (C#):**
+
+```csharp
 public class Program
 {
     public static void Main()
@@ -110,15 +105,13 @@ public class Program
 // [RealImage] Hien thi anh photo.png
 ```
 
-Chú ý dòng `"Dang tai anh..."` chỉ xuất hiện **một lần** dù `Display()` được gọi hai lần — ảnh chỉ thực sự được tải ở lần gọi đầu tiên.
-
 ### Ví dụ 2 — Protection Proxy: kiểm tra quyền trước khi cho phép xoá tài liệu
 
-**Khi nào dùng:** chỉ tài khoản có vai trò `Admin` mới được xoá tài liệu, nhưng không muốn nhúng logic kiểm tra vai trò vào thẳng `DocumentService`.
+**Bài toán:** Hệ thống quản lý tài liệu cho phép xoá tài liệu, nhưng theo nghiệp vụ chỉ tài khoản có vai trò `Admin` mới được thực hiện thao tác này. Nếu để Client gọi thẳng `DeleteDocument()` trên `DocumentService`, thì logic kiểm tra vai trò hoặc phải nhúng thẳng vào `DocumentService`, hoặc phải lặp lại ở mọi nơi gọi tới nó. Cách nào cũng khiến `DocumentService` lẫn lộn giữa logic nghiệp vụ chính (xoá tài liệu) và logic bảo mật (kiểm tra quyền), đồng thời dễ bị bỏ sót kiểm tra nếu sau này có thêm điểm gọi mới.
 
-**Cách sử dụng:** Client vẫn gọi `DeleteDocument()` qua interface `IDocumentService` như bình thường; Proxy tự quyết định có chuyển tiếp lời gọi xuống `RealSubject` hay không.
+**Ý nghĩa của Proxy trong ví dụ này:** `DocumentServiceProxy` hiện thực `IDocumentService` giống hệt `DocumentService` thật, nên Client vẫn gọi `DeleteDocument()` qua interface như bình thường, không cần biết có lớp kiểm tra quyền đứng giữa. `DocumentServiceProxy` giữ vai trò người dùng hiện tại và kiểm tra điều kiện đó trước khi quyết định có chuyển tiếp lời gọi xuống `_realService.DeleteDocument()` hay không — nếu không phải `Admin`, Proxy từ chối ngay mà không hề gọi tới `RealSubject`, còn `DocumentService` hoàn toàn không biết gì về logic phân quyền này, giữ được đúng một trách nhiệm.
 
-**Cách hiện thực:** `DocumentServiceProxy` giữ vai trò người dùng hiện tại, kiểm tra điều kiện trước khi gọi `_realService.DeleteDocument()`.
+**Cách implementation (C#):**
 
 ```csharp
 // Subject
@@ -159,8 +152,11 @@ public class DocumentServiceProxy : IDocumentService
         _realService.DeleteDocument(documentId);
     }
 }
+```
 
-// Chạy thử
+**Cách sử dụng (C#):**
+
+```csharp
 public class Program
 {
     public static void Main()
@@ -180,11 +176,11 @@ public class Program
 
 ### Ví dụ 3 — Caching Proxy: cache lại kết quả truy vấn tốn kém
 
-**Khi nào dùng:** truy vấn thông tin sản phẩm từ "database" tốn thời gian; nếu cùng một `id` được truy vấn nhiều lần, nên trả về từ cache thay vì query lại.
+**Bài toán:** Truy vấn thông tin sản phẩm từ database tốn thời gian và tài nguyên (I/O, network...). Nếu cùng một `id` sản phẩm được truy vấn nhiều lần trong thời gian ngắn — ví dụ trang chi tiết sản phẩm được người dùng mở lại nhiều lần — gọi thẳng `ProductRepository` mỗi lần sẽ khiến hệ thống truy vấn database lặp lại không cần thiết, làm chậm phản hồi. Nếu nhúng logic cache trực tiếp vào `ProductRepository`, lớp này sẽ vừa phải lo truy vấn dữ liệu vừa phải lo quản lý cache, vi phạm Single Responsibility.
 
-**Cách sử dụng:** Client chỉ biết `IProductRepository`, gọi `GetProductById()` như bình thường mà không cần tự quản lý cache ở phía gọi.
+**Ý nghĩa của Proxy trong ví dụ này:** `CachingProductRepositoryProxy` hiện thực `IProductRepository`, nên Client chỉ biết làm việc qua interface này và gọi `GetProductById()` như bình thường mà không cần tự quản lý cache ở phía gọi. Proxy giữ một `Dictionary` làm cache: khi `GetProductById()` được gọi, Proxy kiểm tra cache trước — nếu đã có dữ liệu cho `id` đó, trả về ngay từ cache mà không hề gọi xuống `_realRepository`; nếu chưa có, mới gọi `ProductRepository.GetProductById()` thật, lưu kết quả vào cache rồi trả về. Ở lần gọi `GetProductById(1)` thứ hai, dòng `"Query DB..."` không còn xuất hiện lại, chứng minh Proxy đã trả kết quả từ cache thay vì gọi lại `RealSubject`.
 
-**Cách hiện thực:** `CachingProductRepositoryProxy` giữ một `Dictionary` làm cache; chỉ gọi xuống `RealSubject` khi cache chưa có dữ liệu cho `id` đó.
+**Cách implementation (C#):**
 
 ```csharp
 // Subject
@@ -227,8 +223,11 @@ public class CachingProductRepositoryProxy : IProductRepository
         return product;
     }
 }
+```
 
-// Chạy thử
+**Cách sử dụng (C#):**
+
+```csharp
 public class Program
 {
     public static void Main()
@@ -247,5 +246,3 @@ public class Program
 // [ProductRepository] Query DB cho san pham 2...
 // Product-2
 ```
-
-Ở lần gọi `GetProductById(1)` thứ hai, dòng `"Query DB..."` không xuất hiện lại — chứng minh Proxy đã trả kết quả từ cache thay vì gọi lại `RealSubject`.

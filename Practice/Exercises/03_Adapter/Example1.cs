@@ -17,3 +17,43 @@ namespace Exercises.Adapter.Example1;
 // - class OrderNotificationService (Client)
 //     constructor nhan ISmsSender
 //     NotifyOrderCreated(phoneNumber, orderId) -> goi _smsSender.Send(phoneNumber, "Don hang {orderId} da duoc tao thanh cong")
+
+// Target
+public interface ISmsSender
+{
+    void Send(string phoneNumber, string message);
+}
+
+// Adaptee
+public class ThirdPartySmsClient
+{
+    public void SendMessage(string content, string toNumber, bool isUrgent)
+    {
+        Console.WriteLine($"[ThirdPartySms] Da gui {content} toi {toNumber} (Urgent: {isUrgent})");
+    }
+}
+
+// Adapter
+public class ThirdPartySmsAdapter : ISmsSender
+{
+    private readonly ThirdPartySmsClient _client;
+    public ThirdPartySmsAdapter(ThirdPartySmsClient client)
+    {
+        _client = client;
+    }
+
+    public void Send(string phoneNumber, string message)
+    {
+        _client.SendMessage(message, phoneNumber, false);
+    }
+}
+
+// Cách dùng
+public class Program
+{
+    public static void Main()
+    {
+        ISmsSender smsSender = new ThirdPartySmsAdapter(new ThirdPartySmsClient());
+        smsSender.Send("0966113344", "Hoan thanh don hang");
+    }
+}

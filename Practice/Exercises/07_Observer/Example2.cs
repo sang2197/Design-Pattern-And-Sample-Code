@@ -16,3 +16,67 @@ namespace Exercises.Observer.Example2;
 //     string Name { get; }; List<string> Notifications { get; } = new List<string>();
 //     constructor nhan string name
 //     OnPriceChanged() -> them vao Notifications chuoi "{symbol} vua doi gia: {price:N0}"
+
+// Observer
+public interface IStockObserver
+{
+    void OnPriceChanged(string symbol, decimal price);
+}
+
+// Concrete Observer
+public class Investor : IStockObserver
+{
+    public string Name { get; set; }
+
+    public Investor(string name)
+    {
+        Name = name;
+    }
+
+    public void OnPriceChanged(string symbol, decimal price)
+    {
+        Console.WriteLine($"[{Name}] {symbol} vua doi gia thanh: {price:N0}");
+    }
+}
+
+// Subject
+public class StockSubject
+{
+    private readonly List<IStockObserver> _observer = new List<IStockObserver>();
+    public string _symbol;
+    public decimal _price;
+
+    public StockSubject(string symbol, decimal price)
+    {
+        _symbol = symbol;
+        _price = price;
+    }
+
+    public void Subscribe(IStockObserver observer)
+    {
+        _observer.Add(observer);
+    }
+
+    public void SetPrice(decimal newPrice)
+    {
+        _price = newPrice;
+        foreach(var observer in _observer)
+        {
+            observer.OnPriceChanged(_symbol, _price);
+        }
+    }
+}
+
+// Cách sử dụng
+public class Program
+{
+    public static void Main()
+    {
+        StockSubject stockSubject = new StockSubject("VMN", 52000);
+
+        stockSubject.Subscribe(new Investor("Lan"));
+        stockSubject.Subscribe(new Investor("Nam"));
+
+        stockSubject.SetPrice(60000);
+    }
+}

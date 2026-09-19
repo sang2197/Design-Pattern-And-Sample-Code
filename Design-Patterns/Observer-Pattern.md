@@ -11,31 +11,27 @@ Pattern gồm 4 thành phần:
 - **ConcreteSubject:** hiện thực cụ thể, chứa trạng thái nghiệp vụ và phát sự kiện khi trạng thái đổi.
 - **ConcreteObserver:** hiện thực cụ thể `Observer`, chứa logic phản ứng khi nhận được thông báo.
 
-## 2. Bài toán
+## 2. Khi nào nên dùng
 
-Khi một sự kiện xảy ra (ví dụ đơn hàng đổi trạng thái) cần nhiều nơi khác phản ứng theo (gửi email, gửi SMS, cập nhật tồn kho, ghi log...), cách làm trực tiếp là gọi tuần tự từng service ngay trong method xử lý sự kiện đó:
+Dùng khi:
 
-- Subject khi ấy phải **biết và phụ thuộc trực tiếp** vào từng lớp xử lý cụ thể.
-- Mỗi lần thêm một hành động phản ứng mới lại phải **sửa vào đúng method đó**, vi phạm Open/Closed Principle và khiến class ngày càng phình to.
-- Khó **test riêng từng phần phản ứng**, vì tất cả bị gói chung trong một method.
+✅ Một thay đổi trạng thái cần thông báo cho nhiều đối tượng khác cùng lúc
 
-## 3. Ý nghĩa của Observer
+✅ Không muốn đối tượng phát sự kiện phụ thuộc trực tiếp vào từng nơi xử lý
 
-- **Observer giải quyết bằng cách đảo ngược chiều phụ thuộc:** Subject chỉ biết interface `Observer` chung, không biết có bao nhiêu Observer hay chúng làm gì; các Observer tự đăng ký lắng nghe vào Subject. Khi trạng thái đổi, Subject chỉ cần gọi `Notify()`, tất cả Observer đã đăng ký tự động được gọi.
-- Tuân thủ **Open/Closed Principle**: thêm một hành động phản ứng mới khi sự kiện xảy ra chỉ cần thêm 1 ConcreteObserver và đăng ký nó, không sửa code Subject.
-- Cho phép **thêm/bớt Observer linh hoạt tại runtime** (subscribe/unsubscribe), tách rời hoàn toàn logic phát sinh sự kiện (Subject) khỏi logic xử lý sự kiện (từng Observer) — đây cũng là nền tảng cho cơ chế event/delegate trong .NET.
+✅ Số lượng/loại đối tượng lắng nghe có thể thay đổi linh hoạt tại runtime
 
-## 4. Code mẫu
+✅ Muốn tuân thủ Open/Closed Principle (thêm phản ứng mới không sửa nơi phát sự kiện)
 
-Mỗi ví dụ dưới đây là một minh họa **đầy đủ** cho một tình huống khác nhau: nêu rõ khi nào nên dùng, có đủ Subject/Observer/ConcreteSubject/ConcreteObserver, và một `Main` chạy thử để in kết quả ra console.
+## 3. Code examples
 
 ### Ví dụ 1 — Đơn hàng đổi trạng thái, nhiều nơi cần phản ứng theo
 
-**Khi nào dùng:** khi đơn hàng bị hủy, cần đồng thời gửi email và hoàn trả tồn kho — hai hành động độc lập, có thể có thêm hành động khác trong tương lai (SMS, ghi log...) mà không muốn sửa vào nơi phát sự kiện.
+**Bài toán:** Khi một đơn hàng bị hủy, hệ thống cần đồng thời gửi email thông báo cho khách và hoàn trả tồn kho — hai hành động độc lập nhau, và trong tương lai có thể cần thêm hành động khác như gửi SMS hoặc ghi log. Nếu gọi tuần tự từng service này ngay trong method xử lý đổi trạng thái đơn hàng, nơi phát sự kiện sẽ phải biết và phụ thuộc trực tiếp vào từng lớp xử lý cụ thể. Mỗi lần thêm một phản ứng mới lại phải sửa vào đúng method đó, vi phạm Open/Closed Principle, khiến class ngày càng phình to và khó test riêng từng phần phản ứng.
 
-**Cách sử dụng:** đăng ký các `IOrderObserver` cần thiết qua `Subscribe()`, sau đó chỉ cần gọi `orderSubject.ChangeStatus(...)` một lần duy nhất — mọi Observer đã đăng ký tự động được gọi.
+**Ý nghĩa của Observer trong ví dụ này:** `OrderSubject` đóng vai trò Subject, chỉ biết interface `IOrderObserver` chung chứ không biết có bao nhiêu Observer hay chúng xử lý ra sao. `EmailNotifier` và `InventoryUpdater` là các ConcreteObserver, tự đăng ký lắng nghe qua `Subscribe()`. Khi trạng thái đơn hàng đổi, `OrderSubject.ChangeStatus()` chỉ cần duyệt danh sách `_observers` và gọi `Update()`, không cần biết chi tiết từng phản ứng. Muốn thêm phản ứng mới (ví dụ gửi SMS), chỉ cần thêm một ConcreteObserver mới và đăng ký nó, không phải sửa `OrderSubject`.
 
-**Cách hiện thực:** `OrderSubject.ChangeStatus()` duyệt qua danh sách `_observers` và gọi `Update()` trên từng phần tử; bản thân Subject không có logic riêng cho từng loại phản ứng.
+**Cách implementation (C#):**
 
 ```csharp
 // Observer
@@ -88,8 +84,11 @@ public class InventoryUpdater : IOrderObserver
         }
     }
 }
+```
 
-// Chạy thử - cách sử dụng: đăng ký Observer rồi để Subject tự thông báo
+**Cách sử dụng (C#):**
+
+```csharp
 public class Program
 {
     public static void Main()
@@ -108,11 +107,11 @@ public class Program
 
 ### Ví dụ 2 — Giá cổ phiếu thay đổi, nhiều nhà đầu tư theo dõi cùng lúc
 
-**Khi nào dùng:** nhiều nhà đầu tư (Investor) muốn được báo ngay khi giá một mã cổ phiếu thay đổi. Số lượng người theo dõi thay đổi liên tục (đăng ký/hủy đăng ký), `Stock` không thể biết trước danh sách này khi viết code.
+**Bài toán:** Nhiều nhà đầu tư muốn được báo ngay khi giá một mã cổ phiếu thay đổi, nhưng số lượng và danh tính người theo dõi thay đổi liên tục — có người đăng ký, có người hủy đăng ký bất cứ lúc nào, nên `Stock` không thể biết trước danh sách này ngay khi viết code. Nếu để `Stock` giữ một danh sách cố định các nhà đầu tư cụ thể và tự gọi từng người, việc thêm/bớt nhà đầu tư sẽ đòi hỏi sửa trực tiếp vào lớp `Stock`, phá vỡ khả năng mở rộng linh hoạt tại runtime.
 
-**Cách sử dụng:** mỗi `Investor` gọi `stock.Subscribe(this)` để bắt đầu theo dõi; khi giá đổi (`SetPrice()`), mọi Investor đã subscribe đều nhận được `OnPriceChanged()`.
+**Ý nghĩa của Observer trong ví dụ này:** `Stock` đóng vai trò ConcreteSubject, ngoài việc quản lý danh sách `IStockObserver` còn giữ thêm trạng thái nghiệp vụ thực sự (`_price`) — minh họa Subject không chỉ đơn thuần là nơi phát sự kiện mà thường có dữ liệu đi kèm. Mỗi `Investor` là một ConcreteObserver, tự gọi `stock.Subscribe(this)` để bắt đầu theo dõi mã cổ phiếu mình quan tâm. Khi giá đổi, `SetPrice()` chỉ cần gọi `OnPriceChanged()` trên từng Observer đã đăng ký, cho phép số lượng nhà đầu tư tăng giảm tự do mà không ảnh hưởng đến logic của `Stock`.
 
-**Cách hiện thực:** giống cấu trúc Ví dụ 1, nhưng Subject (`Stock`) lần này còn giữ thêm trạng thái nghiệp vụ (`_price`) — minh hoạ ConcreteSubject không chỉ đơn thuần là nơi phát sự kiện mà thường có dữ liệu thật đi kèm.
+**Cách implementation (C#):**
 
 ```csharp
 // Observer
@@ -164,8 +163,11 @@ public class Investor : IStockObserver
         Console.WriteLine($"[{Name}] {symbol} vua doi gia: {price:N0}");
     }
 }
+```
 
-// Chạy thử
+**Cách sử dụng (C#):**
+
+```csharp
 public class Program
 {
     public static void Main()
@@ -184,11 +186,11 @@ public class Program
 
 ### Ví dụ 3 — Trạm thời tiết, nhiều màn hình hiển thị khác nhau
 
-**Khi nào dùng:** ví dụ kinh điển của Observer (sách Head First Design Patterns) — một `WeatherStation` đo được nhiệt độ/độ ẩm mới, cần cập nhật đồng thời nhiều loại màn hình hiển thị khác nhau (hiển thị hiện tại, hiển thị thống kê...), mỗi loại xử lý dữ liệu theo cách riêng.
+**Bài toán:** Một `WeatherStation` liên tục đo được số liệu nhiệt độ/độ ẩm mới, và hệ thống cần cập nhật đồng thời nhiều loại màn hình hiển thị khác nhau — một màn hình chỉ hiển thị số đo hiện tại, một màn hình khác lại tính toán và hiển thị thống kê trung bình. Nếu `WeatherStation` tự gọi trực tiếp từng loại màn hình ngay trong hàm nhận số đo, nó sẽ phải biết chi tiết cách từng màn hình xử lý dữ liệu, và mỗi lần thêm một loại màn hình mới đều phải sửa lại chính hàm đó.
 
-**Cách sử dụng:** đăng ký bao nhiêu loại display tuỳ ý vào `WeatherStation`; mỗi lần có số đo mới chỉ cần gọi `SetMeasurements()` một lần.
+**Ý nghĩa của Observer trong ví dụ này:** `WeatherStation` là Subject, chỉ làm việc qua abstraction `IWeatherObserver` mà không biết có bao nhiêu loại display hay chúng hiển thị ra sao. `CurrentConditionsDisplay` và `StatisticsDisplay` là hai ConcreteObserver xử lý cùng một thông báo theo hai cách hoàn toàn khác nhau và độc lập với nhau: `CurrentConditionsDisplay` chỉ in trực tiếp số đo mới nhất, còn `StatisticsDisplay` tự giữ thêm trạng thái riêng (`_temperatures`) để tính trung bình. Mỗi lần có số đo mới, `WeatherStation` chỉ cần gọi `SetMeasurements()` một lần, và có thể đăng ký thêm bao nhiêu loại display tùy ý mà không phải sửa `WeatherStation`.
 
-**Cách hiện thực:** `CurrentConditionsDisplay` chỉ in trực tiếp số đo mới nhất, trong khi `StatisticsDisplay` tự giữ thêm trạng thái riêng (`_temperatures`) để tính trung bình — hai Observer xử lý cùng một thông báo theo hai cách hoàn toàn khác nhau, độc lập với nhau.
+**Cách implementation (C#):**
 
 ```csharp
 // Observer
@@ -236,8 +238,11 @@ public class StatisticsDisplay : IWeatherObserver
         Console.WriteLine($"[Statistics] Nhiet do trung binh: {avg:0.0}C");
     }
 }
+```
 
-// Chạy thử
+**Cách sử dụng (C#):**
+
+```csharp
 public class Program
 {
     public static void Main()

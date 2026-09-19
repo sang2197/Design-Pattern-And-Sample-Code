@@ -14,3 +14,64 @@ namespace Exercises.Decorator.Example1;
 //     Describe() -> "{Inner.Describe()} + Milk"; Cost() -> Inner.Cost() + 5000
 // - class SugarDecorator : CoffeeDecorator (ConcreteDecorator)
 //     Describe() -> "{Inner.Describe()} + Sugar"; Cost() -> Inner.Cost() + 2000
+
+
+// Component
+public interface ICoffee
+{
+    string Describe();
+    decimal Cost();
+}
+
+// Concrete component
+public class SimpleCoffee : ICoffee
+{
+    public string Describe() => "Coffee";
+    public decimal Cost() => 20000;
+}
+
+// Decorator
+public abstract class CoffeeDecorator : ICoffee
+{
+    protected ICoffee Inner;
+
+    public CoffeeDecorator(ICoffee inner)
+    {
+        Inner = inner;
+    }
+
+    public virtual string Describe() => Inner.Describe();
+    public virtual decimal Cost() => Inner.Cost();
+}
+
+// Concrete decorator
+public class MilkDecorator : CoffeeDecorator
+{
+    public MilkDecorator(ICoffee inner) : base(inner)
+    {
+    }
+
+    public override string Describe() => $"{Inner.Describe()} + Milk";
+    public override decimal Cost() => Inner.Cost() + 5000;
+}
+
+public class SugarDecorator : CoffeeDecorator
+{
+    public SugarDecorator(ICoffee inner) : base(inner)
+    {
+    }
+
+    public override string Describe() => $"{Inner.Describe()} + Sugar";
+    public override decimal Cost() => Inner.Cost() + 3000;
+}
+
+// Cach dung
+public class Program
+{
+    public static void Main()
+    {
+        ICoffee order = new SugarDecorator(new MilkDecorator(new SimpleCoffee()));
+        Console.WriteLine(order.Describe());
+        Console.WriteLine(order.Cost());
+    }
+}

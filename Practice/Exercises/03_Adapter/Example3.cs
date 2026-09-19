@@ -12,3 +12,44 @@ namespace Exercises.Adapter.Example3;
 //     constructor nhan ForeignPaymentSdk
 //     Pay(decimal amount) -> quy doi amount (vd 19.99) sang amountInCents (int, vd 1999) bang (int)(amount * 100),
 //       roi goi _sdk.Charge(amountInCents, "USD")
+
+// Target
+public interface IPayment
+{
+    void Pay(decimal amount);
+}
+
+// Adaptee
+public class ForeignPaymentSDK
+{
+    public void Charge(int amountInCents, string currency)
+    {
+        Console.WriteLine($"[ForeignSDK] Charged {amountInCents} {currency} cents");
+    }
+}
+
+// Adapter
+public class ForeignPaymentAdapter : IPayment
+{
+    private readonly ForeignPaymentSDK _foreignPayment;
+    public ForeignPaymentAdapter(ForeignPaymentSDK foreignPayment)
+    {
+        _foreignPayment = foreignPayment;
+    }
+
+    public void Pay(decimal amount)
+    {
+        int amountInCents = (int)(amount * 100);
+        _foreignPayment.Charge(amountInCents, "USD");
+    }
+}
+
+// Cách dùng
+public class Program
+{
+    public static void Main()
+    {
+        IPayment payment = new ForeignPaymentAdapter(new ForeignPaymentSDK());
+        payment.Pay(12.99M);
+    }
+}
