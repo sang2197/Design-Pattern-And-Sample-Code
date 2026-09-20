@@ -20,28 +20,28 @@ namespace Exercises.Observer.Example1;
 //     List<string> RestockedOrders { get; } = new List<string>();
 //     Update() -> neu newStatus == "Cancelled" thi them orderId vao RestockedOrders
 
-//Observer
+// Observer
 public interface IOrderObserver
 {
-    void Update(string orderId, string newStatus);
+    void Update(string orderId, string status);
 }
 
-//Concrete Observer
-public class EmailNotifier : IOrderObserver
+// Concrete Observer
+public class MailObserver : IOrderObserver
 {
-    public void Update(string orderId, string newStatus)
+    public void Update(string orderId, string status)
     {
-        Console.WriteLine($"[Email] don hang {orderId} chuyen sang trang thai: {newStatus}");
+        Console.WriteLine($"Don hang {orderId} da chuyen trang thai {status}");
     }
 }
 
-public class InventoryUpdate : IOrderObserver
+public class InventoryObserver : IOrderObserver
 {
-    public void Update(string orderId, string newStatus)
+    public void Update(string orderId, string status)
     {
-        if(newStatus == "Cancelled")
+        if(status == "Cancelled")
         {
-            Console.WriteLine($"[Inventory] Hoan tra ton kho cho don hang {orderId}");
+            Console.WriteLine($"Cap nhat ton kho cho don hang {orderId}");
         }
     }
 }
@@ -49,37 +49,32 @@ public class InventoryUpdate : IOrderObserver
 // Subject
 public class OrderSubject
 {
-    private readonly List<IOrderObserver> _observer = new List<IOrderObserver>();
+    private readonly List<IOrderObserver> _observers = new List<IOrderObserver>();
 
-    public void Subscribe(IOrderObserver observer)
+    public void Subscribe (IOrderObserver observer)
     {
-        _observer.Add(observer);
-    } 
-
-    public void UnSubscribe(IOrderObserver observer)
-    {
-        _observer.Remove(observer);
+        _observers.Add(observer);
     }
 
-    public void ChangerStatus(string orderId, string newStatus)
+    public void ChangeStatus(string orderId, string status)
     {
-        foreach(var observer in _observer)
+        foreach(var observer in _observers)
         {
-            observer.Update(orderId, newStatus);
+            observer.Update(orderId, status);
         }
     }
 }
 
-// Cách sử dụng
+// Cách dùng
 public class Program
 {
     public static void Main()
     {
-        OrderSubject orderSubject = new OrderSubject();
+        var order = new OrderSubject();
 
-        orderSubject.Subscribe(new EmailNotifier());
-        orderSubject.Subscribe(new InventoryUpdate());
+        order.Subscribe(new MailObserver());
+        order.Subscribe(new InventoryObserver());
 
-        orderSubject.ChangerStatus("HD0001", "Cancelled");
+        order.ChangeStatus("DH0001", "Cancelled");
     }
 }

@@ -184,30 +184,30 @@ public class Program
 
 ```csharp
 // Subject
-public interface IProductRepository
+public interface IProduct
 {
     string GetProductById(int id);
 }
 
 // RealSubject
-public class ProductRepository : IProductRepository
+public class Product : IProduct
 {
     public string GetProductById(int id)
     {
-        Console.WriteLine($"[ProductRepository] Query DB cho san pham {id}...");
+        Console.WriteLine($"[Product] Query DB cho san pham {id}...");
         return $"Product-{id}";
     }
 }
 
 // Proxy
-public class CachingProductRepositoryProxy : IProductRepository
+public class CachingProductProxy : IProduct
 {
-    private readonly ProductRepository _realRepository;
+    private readonly Product _real;
     private readonly Dictionary<int, string> _cache = new Dictionary<int, string>();
 
-    public CachingProductRepositoryProxy(ProductRepository realRepository)
+    public CachingProductProxy(Product real)
     {
-        _realRepository = realRepository;
+        _real = real;
     }
 
     public string GetProductById(int id)
@@ -218,7 +218,7 @@ public class CachingProductRepositoryProxy : IProductRepository
             return cached;
         }
 
-        var product = _realRepository.GetProductById(id);
+        var product = _real.GetProductById(id);
         _cache[id] = product;
         return product;
     }
@@ -232,7 +232,7 @@ public class Program
 {
     public static void Main()
     {
-        IProductRepository repository = new CachingProductRepositoryProxy(new ProductRepository());
+        IProduct repository = new CachingProductProxy(new Product());
 
         Console.WriteLine(repository.GetProductById(1));
         Console.WriteLine(repository.GetProductById(1));

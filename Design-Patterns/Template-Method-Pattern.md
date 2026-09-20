@@ -33,7 +33,7 @@ Dùng khi:
 
 ```csharp
 // AbstractClass
-public abstract class ReportGenerator
+public abstract class Report
 {
     // Template Method - dinh nghia thu tu cac buoc, khong cho subclass sua
     public void Generate()
@@ -49,7 +49,7 @@ public abstract class ReportGenerator
 }
 
 // ConcreteClass
-public class CsvReportGenerator : ReportGenerator
+public class CsvReport : Report
 {
     protected override string ReadData() => "id,name\n1,Product A";
 
@@ -58,7 +58,7 @@ public class CsvReportGenerator : ReportGenerator
     protected override void Export(string data) => Console.WriteLine($"[CSV] {data}");
 }
 
-public class JsonReportGenerator : ReportGenerator
+public class JsonReport : Report
 {
     protected override string ReadData() => "{\"id\":1,\"name\":\"Product A\"}";
 
@@ -75,10 +75,10 @@ public class Program
 {
     public static void Main()
     {
-        ReportGenerator csv = new CsvReportGenerator();
+        Report csv = new CsvReport();
         csv.Generate();
 
-        ReportGenerator json = new JsonReportGenerator();
+        Report json = new JsonReport();
         json.Generate();
     }
 }
@@ -97,7 +97,7 @@ public class Program
 
 ```csharp
 // AbstractClass
-public abstract class PaymentProcessor
+public abstract class Payment
 {
     // Template Method
     public void Process(decimal amount)
@@ -123,12 +123,12 @@ public abstract class PaymentProcessor
 }
 
 // ConcreteClass
-public class CreditCardPaymentProcessor : PaymentProcessor
+public class CreditCardPayment : Payment
 {
     protected override void Charge(decimal amount) => Console.WriteLine($"[CreditCard] Da tru {amount:N0} tu the");
 }
 
-public class EWalletPaymentProcessor : PaymentProcessor
+public class EWalletPayment : Payment
 {
     protected override void Charge(decimal amount) => Console.WriteLine($"[EWallet] Da tru {amount:N0} tu vi dien tu");
 
@@ -169,7 +169,7 @@ public class Program
 
 ```csharp
 // AbstractClass
-public abstract class LeaveRequestProcessor
+public abstract class LeaveRequest
 {
     // Template Method
     public void Process(string employeeName, int requestedDays)
@@ -189,14 +189,14 @@ public abstract class LeaveRequestProcessor
 }
 
 // ConcreteClass
-public class NormalLeaveProcessor : LeaveRequestProcessor
+public class NormalLeave : LeaveRequest
 {
     protected override bool CheckEligibility(int requestedDays) => requestedDays <= 12;
 
     protected override int CalculateDays(int requestedDays) => requestedDays;
 }
 
-public class SickLeaveProcessor : LeaveRequestProcessor
+public class SickLeave : LeaveRequest
 {
     protected override bool CheckEligibility(int requestedDays) => requestedDays <= 30;
 
@@ -212,11 +212,11 @@ public class Program
 {
     public static void Main()
     {
-        LeaveRequestProcessor normal = new NormalLeaveProcessor();
+        LeaveRequest normal = new NormalLeave();
         normal.Process("Nam", 3);
         normal.Process("Nam", 15);
 
-        LeaveRequestProcessor sick = new SickLeaveProcessor();
+        LeaveRequest sick = new SickLeave();
         sick.Process("Lan", 4);
     }
 }

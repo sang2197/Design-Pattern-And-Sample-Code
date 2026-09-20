@@ -15,3 +15,62 @@ namespace Exercises.Decorator.Example3;
 // - class EncryptionDecorator : DataSourceDecorator (ConcreteDecorator)
 //     Write(data) -> lay written = Inner.Write(data), dao nguoc chuoi written (vd dung .Reverse().ToArray()),
 //       tra ve "[encrypted]{chuoi da dao nguoc}"
+
+// Component
+public interface IDataSource
+{
+    void WriteData(string data);
+}
+
+// Concrete Component
+public class FileData : IDataSource
+{
+    public void WriteData(string data)
+    {
+        Console.WriteLine($"Write to file: {data}");
+    }
+}
+
+// Decorator
+public abstract class FileDataDecorator : IDataSource
+{
+    protected readonly IDataSource Inner;
+    public FileDataDecorator(IDataSource inner)
+    {
+        Inner = inner;
+    }
+
+    public virtual void WriteData(string data)
+    {
+        Inner.WriteData(data);
+    }
+}
+
+// Concrete Decorator
+public class CompressionFileDecorator : FileDataDecorator
+{
+    public CompressionFileDecorator(IDataSource inner) : base(inner)
+    {
+    }
+
+    public override void WriteData(string data) => Inner.WriteData($"[Compressed]{data}");
+}
+
+public class EncryptionFileDecorator : FileDataDecorator
+{
+    public EncryptionFileDecorator(IDataSource inner) : base(inner)
+    {
+    }
+
+    public override void WriteData(string data) => Inner.WriteData($"[Encrypted]{data}");
+}
+
+// Cách dùng
+public class Program
+{
+    public static void Main()
+    {
+        IDataSource data = new CompressionFileDecorator(new EncryptionFileDecorator(new FileData()));
+        data.WriteData("DH00256");
+    }
+}

@@ -15,3 +15,76 @@ namespace Exercises.Decorator.Example2;
 //     Send(message) -> "{prefix} {Inner.Send(message)}"
 // - class UpperCaseDecorator : NotifierDecorator (ConcreteDecorator)
 //     Send(message) -> Inner.Send(message).ToUpper()
+
+// Component
+public interface IProductService
+{
+    string GetProductById(int id);
+}
+
+// Concrete Component
+public class ProductService : IProductService
+{
+    public string GetProductById(int id) => $"Get product id: {id} from database";
+}
+
+// Decorator
+public abstract class ProductDecorator : IProductService
+{
+    protected readonly IProductService Inner;
+    public ProductDecorator(IProductService inner)
+    {
+        Inner = inner;
+    }
+
+    public virtual string GetProductById(int id)
+    {
+        return Inner.GetProductById(id);
+    }
+}
+
+// Concrete Decorator
+public class LogDecorator : ProductDecorator
+{
+    public LogDecorator(IProductService inner) : base(inner)
+    {
+    }
+
+    public override string GetProductById(int id)
+    {
+        Console.WriteLine($"[LOG] Getting product id: {id}");
+        var result = Inner.GetProductById(id);
+        Console.WriteLine($"[LOG] Product id: {id} loaded");
+        return result;
+    }
+}
+
+public class CacheDecorator : ProductDecorator
+{
+    private readonly Dictionary<int, string> _cache = new();
+    public CacheDecorator(IProductService inner) : base(inner)
+    {
+    }
+
+    public override string GetProductById(int id)
+    {
+        if(_cache.TryGetValue(id, out var product))
+        {
+            return $"[Cache] Get product id: {id} from cache";
+        }
+
+        var result = Inner.GetProductById(id);
+        _cache[id] = result;
+        return result;
+    }
+}
+
+// Cách dùng
+public class Program
+{
+    public static void Main()
+    {
+        IProductService product = new LogDecorator(new CacheDecorator(new ProductService()));
+        Console.WriteLine(product.GetProductById(12));
+    }
+}

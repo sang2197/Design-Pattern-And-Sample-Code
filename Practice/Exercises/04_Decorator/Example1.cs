@@ -23,7 +23,7 @@ public interface ICoffee
     decimal Cost();
 }
 
-// Concrete component
+// Concrete Component
 public class SimpleCoffee : ICoffee
 {
     public string Describe() => "Coffee";
@@ -33,18 +33,18 @@ public class SimpleCoffee : ICoffee
 // Decorator
 public abstract class CoffeeDecorator : ICoffee
 {
-    protected ICoffee Inner;
-
+    protected readonly ICoffee Inner;
     public CoffeeDecorator(ICoffee inner)
     {
         Inner = inner;
     }
 
     public virtual string Describe() => Inner.Describe();
+
     public virtual decimal Cost() => Inner.Cost();
 }
 
-// Concrete decorator
+// Concrete Decorator
 public class MilkDecorator : CoffeeDecorator
 {
     public MilkDecorator(ICoffee inner) : base(inner)
@@ -52,7 +52,7 @@ public class MilkDecorator : CoffeeDecorator
     }
 
     public override string Describe() => $"{Inner.Describe()} + Milk";
-    public override decimal Cost() => Inner.Cost() + 5000;
+    public override decimal Cost() => Inner.Cost() + 8000;
 }
 
 public class SugarDecorator : CoffeeDecorator
@@ -62,16 +62,16 @@ public class SugarDecorator : CoffeeDecorator
     }
 
     public override string Describe() => $"{Inner.Describe()} + Sugar";
-    public override decimal Cost() => Inner.Cost() + 3000;
+    public override decimal Cost() => Inner.Cost() + 5000;
 }
 
-// Cach dung
+// Cách dùng
 public class Program
 {
     public static void Main()
     {
-        ICoffee order = new SugarDecorator(new MilkDecorator(new SimpleCoffee()));
-        Console.WriteLine(order.Describe());
-        Console.WriteLine(order.Cost());
+        ICoffee coffee = new SugarDecorator(new MilkDecorator(new SimpleCoffee()));
+        Console.WriteLine(coffee.Describe());
+        Console.WriteLine(coffee.Cost());
     }
 }

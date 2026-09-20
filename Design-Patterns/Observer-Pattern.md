@@ -109,13 +109,13 @@ public class Program
 
 **Bài toán:** Nhiều nhà đầu tư muốn được báo ngay khi giá một mã cổ phiếu thay đổi, nhưng số lượng và danh tính người theo dõi thay đổi liên tục — có người đăng ký, có người hủy đăng ký bất cứ lúc nào, nên `Stock` không thể biết trước danh sách này ngay khi viết code. Nếu để `Stock` giữ một danh sách cố định các nhà đầu tư cụ thể và tự gọi từng người, việc thêm/bớt nhà đầu tư sẽ đòi hỏi sửa trực tiếp vào lớp `Stock`, phá vỡ khả năng mở rộng linh hoạt tại runtime.
 
-**Ý nghĩa của Observer trong ví dụ này:** `Stock` đóng vai trò ConcreteSubject, ngoài việc quản lý danh sách `IStockObserver` còn giữ thêm trạng thái nghiệp vụ thực sự (`_price`) — minh họa Subject không chỉ đơn thuần là nơi phát sự kiện mà thường có dữ liệu đi kèm. Mỗi `Investor` là một ConcreteObserver, tự gọi `stock.Subscribe(this)` để bắt đầu theo dõi mã cổ phiếu mình quan tâm. Khi giá đổi, `SetPrice()` chỉ cần gọi `OnPriceChanged()` trên từng Observer đã đăng ký, cho phép số lượng nhà đầu tư tăng giảm tự do mà không ảnh hưởng đến logic của `Stock`.
+**Ý nghĩa của Observer trong ví dụ này:** `Stock` đóng vai trò ConcreteSubject, ngoài việc quản lý danh sách `IStock` còn giữ thêm trạng thái nghiệp vụ thực sự (`_price`) — minh họa Subject không chỉ đơn thuần là nơi phát sự kiện mà thường có dữ liệu đi kèm. Mỗi `Investor` là một ConcreteObserver, tự gọi `stock.Subscribe(this)` để bắt đầu theo dõi mã cổ phiếu mình quan tâm. Khi giá đổi, `SetPrice()` chỉ cần gọi `OnPriceChanged()` trên từng Observer đã đăng ký, cho phép số lượng nhà đầu tư tăng giảm tự do mà không ảnh hưởng đến logic của `Stock`.
 
 **Cách implementation (C#):**
 
 ```csharp
 // Observer
-public interface IStockObserver
+public interface IStock
 {
     void OnPriceChanged(string symbol, decimal price);
 }
@@ -123,7 +123,7 @@ public interface IStockObserver
 // Subject
 public class Stock
 {
-    private readonly List<IStockObserver> _observers = new List<IStockObserver>();
+    private readonly List<IStock> _observers = new List<IStock>();
     public string Symbol { get; }
     private decimal _price;
 
@@ -133,7 +133,7 @@ public class Stock
         _price = initialPrice;
     }
 
-    public void Subscribe(IStockObserver observer)
+    public void Subscribe(IStock observer)
     {
         _observers.Add(observer);
     }
@@ -149,7 +149,7 @@ public class Stock
 }
 
 // ConcreteObserver
-public class Investor : IStockObserver
+public class Investor : IStock
 {
     public string Name { get; }
 

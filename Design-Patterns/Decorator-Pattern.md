@@ -109,60 +109,87 @@ public class Program
 // 25000
 ```
 
-### Ví dụ 2 — Định dạng thông báo (thêm tiền tố, viết hoa) mà không sửa lớp gốc
+### Ví dụ 2 — Bổ sung Logging và Caching cho ProductService
 
-**Bài toán:** `BasicNotifier` chỉ gửi nguyên văn message. Tuy nhiên có lúc hệ thống cần thêm tiền tố `[INFO]` trước nội dung, có lúc cần viết hoa toàn bộ message, có lúc cần áp dụng cả hai theo một thứ tự nhất định, và các yêu cầu định dạng này có thể thay đổi độc lập với nhau tùy theo loại thông báo. Nếu sửa trực tiếp vào `BasicNotifier` hoặc tạo subclass riêng cho từng cách kết hợp định dạng (`PrefixedNotifier`, `UpperCaseNotifier`, `PrefixedUpperCaseNotifier`...), class gốc sẽ ngày càng phình to hoặc số subclass sẽ tăng nhanh mỗi khi có thêm một kiểu định dạng mới.
+**Bài toán:** Một hệ thống bán hàng có `ProductService` chịu trách nhiệm lấy thông tin sản phẩm từ database. Sau đó hệ thống phát sinh thêm các yêu cầu như ghi log mỗi lần lấy sản phẩm và cache kết quả để giảm số lần truy vấn database. Nếu đưa trực tiếp toàn bộ logic logging và caching vào `ProductService`, class này sẽ phải xử lý cả business logic lẫn các cross-cutting concern không thuộc trách nhiệm chính của nó. Nếu dùng kế thừa để tạo các class như `LoggingProductService`, `CachingProductService`, `LoggingCachingProductService`..., số lượng subclass sẽ tăng nhanh khi có thêm các tính năng như retry, metrics hoặc authorization.
 
-**Ý nghĩa của Decorator trong ví dụ này:** `NotifierDecorator` (abstract) mặc định ủy quyền `Send()` cho `Inner`, còn `PrefixDecorator` và `UpperCaseDecorator` mỗi lớp chỉ chèn thêm đúng một bước xử lý (thêm tiền tố, hoặc viết hoa) trước khi trả kết quả ra ngoài, mà không đụng vào `BasicNotifier` hay lẫn vào logic của Decorator còn lại. Việc bọc `BasicNotifier` trong `PrefixDecorator` rồi bọc tiếp trong `UpperCaseDecorator` cho phép kết hợp các bước định dạng theo bất kỳ thứ tự nào, và thứ tự bọc từ trong ra ngoài chính là thứ tự áp dụng định dạng.
+**Ý nghĩa của Decorator trong ví dụ này:** `ProductServiceDecorator` hiện thực cùng interface `IProductService` và giữ một `IProductService` khác bên trong. `LoggingProductServiceDecorator` chỉ bổ sung logging, còn `CachingProductServiceDecorator` chỉ chịu trách nhiệm caching. Vì tất cả đều cùng hiện thực `IProductService`, Client có thể bọc chúng theo nhiều cách khác nhau mà không cần sửa `ProductService`. Ví dụ có thể dùng `ProductService` trực tiếp, chỉ thêm cache, chỉ thêm logging, hoặc kết hợp cả logging và caching tùy theo cấu hình của hệ thống.
 
 **Cách implementation (C#):**
 
 ```csharp
 // Component
-public interface INotifier
+public interface IProductService
 {
-    string Send(string message);
+    string GetProduct(int id);
 }
 
 // ConcreteComponent
-public class BasicNotifier : INotifier
+public class ProductService : IProductService
 {
-    public string Send(string message) => message;
+    public string GetProduct(int id)
+    {
+        return $"Product {id} from Database";
+    }
 }
 
 // Decorator
-public abstract class NotifierDecorator : INotifier
+public abstract class ProductServiceDecorator : IProductService
 {
-    protected readonly INotifier Inner;
+    protected readonly IProductService Inner;
 
-    protected NotifierDecorator(INotifier inner)
+    protected ProductServiceDecorator(IProductService inner)
     {
         Inner = inner;
     }
 
-    public virtual string Send(string message) => Inner.Send(message);
-}
-
-// ConcreteDecorator
-public class PrefixDecorator : NotifierDecorator
-{
-    private readonly string _prefix;
-
-    public PrefixDecorator(INotifier inner, string prefix) : base(inner)
+    public virtual string GetProduct(int id)
     {
-        _prefix = prefix;
+        return Inner.GetProduct(id);
     }
-
-    public override string Send(string message) => $"{_prefix} {Inner.Send(message)}";
 }
 
-public class UpperCaseDecorator : NotifierDecorator
+// ConcreteDecorator - Logging
+public class LoggingProductServiceDecorator : ProductServiceDecorator
 {
-    public UpperCaseDecorator(INotifier inner) : base(inner)
+    public LoggingProductServiceDecorator(IProductService inner)
+        : base(inner)
     {
     }
 
-    public override string Send(string message) => Inner.Send(message).ToUpper();
+    public override string GetProduct(int id)
+    {
+        Console.WriteLine($"[LOG] Getting product {id}");
+
+        var result = Inner.GetProduct(id);
+
+        Console.WriteLine($"[LOG] Product {id} loaded");
+        return result;
+    }
+}
+
+// ConcreteDecorator - Caching
+public class CachingProductServiceDecorator : ProductServiceDecorator
+{
+    private readonly Dictionary<int, string> _cache = new();
+
+    public CachingProductServiceDecorator(IProductService inner)
+        : base(inner)
+    {
+    }
+
+    public override string GetProduct(int id)
+    {
+        if (_cache.TryGetValue(id, out var product))
+        {
+            return $"[CACHE] {product}";
+        }
+
+        var result = Inner.GetProduct(id);
+        _cache[id] = result;
+
+        return result;
+    }
 }
 ```
 
@@ -173,18 +200,29 @@ public class Program
 {
     public static void Main()
     {
-        INotifier notifier = new UpperCaseDecorator(new PrefixDecorator(new BasicNotifier(), "[INFO]"));
-        Console.WriteLine(notifier.Send("don hang da duoc xac nhan"));
+        IProductService service =
+            new LoggingProductServiceDecorator(
+                new CachingProductServiceDecorator(
+                    new ProductService()));
+
+        Console.WriteLine(service.GetProduct(1));
+        // [LOG] Getting product 1
+        // [LOG] Product 1 loaded
+        // Product 1 from Database
+
+        Console.WriteLine(service.GetProduct(1));
+        // [LOG] Getting product 1
+        // [LOG] Product 1 loaded
+        // [CACHE] Product 1 from Database
     }
 }
-// [INFO] DON HANG DA DUOC XAC NHAN
 ```
 
-### Ví dụ 3 — Ghép pipeline xử lý dữ liệu (nén rồi mã hoá)
+### Ví dụ 3 — Pipeline xử lý dữ liệu trước khi ghi file (Nén / Mã hóa)
 
-**Bài toán:** Dữ liệu ghi ra nguồn (`FileDataSource`) đôi khi cần nén trước khi ghi, đôi khi cần mã hoá trước khi ghi, đôi khi cần cả nén lẫn mã hoá theo đúng một thứ tự cụ thể (nén trước, mã hoá sau), tùy theo cấu hình của từng luồng dữ liệu. Nếu hiện thực từng tổ hợp bước xử lý bằng kế thừa (`CompressedFileDataSource`, `EncryptedFileDataSource`, `CompressedEncryptedFileDataSource`...), số subclass sẽ tăng nhanh theo số bước xử lý và không thể thay đổi thứ tự các bước cho một luồng dữ liệu cụ thể mà không viết thêm subclass mới.
+**Bài toán:** Một hệ thống cần ghi dữ liệu xuống file, nhưng tùy từng trường hợp dữ liệu có thể được ghi trực tiếp, nén trước khi ghi, mã hóa trước khi ghi, hoặc thực hiện cả nén và mã hóa. Nếu dùng kế thừa để tạo từng tổ hợp như `CompressedFileDataSource`, `EncryptedFileDataSource`, `CompressedEncryptedFileDataSource`..., số lượng subclass sẽ tăng nhanh khi có thêm các bước xử lý mới. Ngoài ra, thứ tự xử lý dữ liệu cũng có thể thay đổi tùy yêu cầu, nên việc định nghĩa cố định từng tổ hợp bằng subclass sẽ thiếu linh hoạt.
 
-**Ý nghĩa của Decorator trong ví dụ này:** `DataSourceDecorator` (abstract) mặc định ủy quyền `Write()` cho `Inner`, còn `CompressionDecorator` và `EncryptionDecorator` mỗi lớp chỉ biến đổi kết quả của `Inner.Write()` theo đúng một quy tắc riêng (thêm nhãn nén, hoặc đảo ngược chuỗi và thêm nhãn mã hoá), không biết và không cần biết còn Decorator nào khác đang bọc quanh nó. Biểu thức `new EncryptionDecorator(new CompressionDecorator(new FileDataSource()))` bọc `CompressionDecorator` sát `FileDataSource` rồi bọc tiếp `EncryptionDecorator` ra ngoài, nên thứ tự bọc từ trong ra ngoài chính là thứ tự các bước xử lý được áp dụng (nén trước, mã hoá sau), và có thể đổi thứ tự hoặc bớt một bước chỉ bằng cách đổi cách lồng Decorator, không cần sửa hay thêm class mới.
+**Ý nghĩa của Decorator trong ví dụ này:** `DataSourceDecorator` hiện thực cùng interface `IDataSource` và giữ một `IDataSource` khác bên trong. `CompressionDecorator` chỉ chịu trách nhiệm nén dữ liệu rồi chuyển kết quả cho `Inner`, còn `EncryptionDecorator` chỉ mã hóa dữ liệu rồi tiếp tục chuyển xuống `Inner`. Cuối cùng `FileDataSource` nhận dữ liệu đã được xử lý và thực hiện ghi file. Nhờ các Decorator có cùng interface, Client có thể tự do kết hợp các bước xử lý và kiểm soát thứ tự pipeline chỉ bằng cách thay đổi cách lồng các Decorator.
 
 **Cách implementation (C#):**
 
@@ -192,13 +230,16 @@ public class Program
 // Component
 public interface IDataSource
 {
-    string Write(string data);
+    void Write(string data);
 }
 
 // ConcreteComponent
 public class FileDataSource : IDataSource
 {
-    public string Write(string data) => data;
+    public void Write(string data)
+    {
+        Console.WriteLine($"Write to file: {data}");
+    }
 }
 
 // Decorator
@@ -211,30 +252,43 @@ public abstract class DataSourceDecorator : IDataSource
         Inner = inner;
     }
 
-    public virtual string Write(string data) => Inner.Write(data);
+    public virtual void Write(string data)
+    {
+        Inner.Write(data);
+    }
 }
 
-// ConcreteDecorator
+// ConcreteDecorator - Compression
 public class CompressionDecorator : DataSourceDecorator
 {
-    public CompressionDecorator(IDataSource inner) : base(inner)
+    public CompressionDecorator(IDataSource inner)
+        : base(inner)
     {
     }
 
-    public override string Write(string data) => $"[compressed]{Inner.Write(data)}";
+    public override void Write(string data)
+    {
+        // Giả lập quá trình nén để tập trung vào cấu trúc Decorator
+        string compressed = $"[compressed]{data}";
+
+        Inner.Write(compressed);
+    }
 }
 
+// ConcreteDecorator - Encryption
 public class EncryptionDecorator : DataSourceDecorator
 {
-    public EncryptionDecorator(IDataSource inner) : base(inner)
+    public EncryptionDecorator(IDataSource inner)
+        : base(inner)
     {
     }
 
-    public override string Write(string data)
+    public override void Write(string data)
     {
-        var written = Inner.Write(data);
-        var reversed = new string(written.Reverse().ToArray());
-        return $"[encrypted]{reversed}";
+        // Giả lập quá trình mã hóa để tập trung vào cấu trúc Decorator
+        string encrypted = $"[encrypted]{data}";
+
+        Inner.Write(encrypted);
     }
 }
 ```
@@ -246,10 +300,17 @@ public class Program
 {
     public static void Main()
     {
-        // Thu tu bien: nen truoc (CompressionDecorator gan Component nhat), ma hoa sau
-        IDataSource source = new EncryptionDecorator(new CompressionDecorator(new FileDataSource()));
-        Console.WriteLine(source.Write("hello"));
+        // Dữ liệu đi theo pipeline:
+        // Compression -> Encryption -> File
+        IDataSource source =
+            new CompressionDecorator(
+                new EncryptionDecorator(
+                    new FileDataSource()));
+
+        source.Write("hello");
+
+        // Write to file:
+        // [encrypted][compressed]hello
     }
 }
-// [encrypted]olleh]desserpmoc[
 ```

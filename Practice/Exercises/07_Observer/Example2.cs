@@ -20,31 +20,30 @@ namespace Exercises.Observer.Example2;
 // Observer
 public interface IStockObserver
 {
-    void OnPriceChanged(string symbol, decimal price);
+    void Change(string symbol, decimal price);
 }
 
-// Concrete Observer
+// Concrete
 public class Investor : IStockObserver
 {
-    public string Name { get; set; }
-
+    public string Name;
     public Investor(string name)
     {
         Name = name;
     }
 
-    public void OnPriceChanged(string symbol, decimal price)
+    public void Change(string symbol, decimal price)
     {
-        Console.WriteLine($"[{Name}] {symbol} vua doi gia thanh: {price:N0}");
+        Console.WriteLine($"[{Name}] {symbol} Da cap nhat gia: {price}");
     }
 }
 
 // Subject
 public class StockSubject
 {
-    private readonly List<IStockObserver> _observer = new List<IStockObserver>();
-    public string _symbol;
-    public decimal _price;
+    private string _symbol;
+    private decimal _price;
+    private readonly List<IStockObserver> _observers = new List<IStockObserver>();
 
     public StockSubject(string symbol, decimal price)
     {
@@ -54,29 +53,29 @@ public class StockSubject
 
     public void Subscribe(IStockObserver observer)
     {
-        _observer.Add(observer);
+        _observers.Add(observer);
     }
 
     public void SetPrice(decimal newPrice)
     {
         _price = newPrice;
-        foreach(var observer in _observer)
+        foreach(var observer in _observers)
         {
-            observer.OnPriceChanged(_symbol, _price);
+            observer.Change(_symbol, _price);
         }
     }
 }
 
-// Cách sử dụng
+// Cách dùng
 public class Program
 {
     public static void Main()
     {
-        StockSubject stockSubject = new StockSubject("VMN", 52000);
+        var stock = new StockSubject("VNM", 80000);
 
-        stockSubject.Subscribe(new Investor("Lan"));
-        stockSubject.Subscribe(new Investor("Nam"));
+        stock.Subscribe(new Investor("Nam"));
+        stock.Subscribe(new Investor("Lan"));
 
-        stockSubject.SetPrice(60000);
+        stock.SetPrice(82000);
     }
 }

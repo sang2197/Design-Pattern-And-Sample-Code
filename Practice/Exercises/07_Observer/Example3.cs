@@ -35,33 +35,33 @@ public class CurrentConditionsDisplay : IWeatherObserver
     }
 }
 
-public class StaticsDisplay: IWeatherObserver
+public class StaticsDisplay : IWeatherObserver
 {
-    public List<double> _temperatures = new List<double>();
+    private List<double> _temperatures = new List<double>();
 
     public void Update(double temperature, double humidity)
     {
         _temperatures.Add(temperature);
-        var _avg = _temperatures.Average();
-        Console.WriteLine($"[Statics] Nhiet do trung binh: {_avg:0.0}C");
+        var avg = _temperatures.Average();
+        Console.WriteLine($"Nhiet do trung binh: {avg}");
     }
 }
 
 // Subject
 public class WeatherStation
 {
-    public List<IWeatherObserver> _observers = new List<IWeatherObserver>();
-
+    private readonly List<IWeatherObserver> _observers = new List<IWeatherObserver>();
+    
     public void Subscribe(IWeatherObserver observer)
     {
         _observers.Add(observer);
     }
 
-    public void SetMeasurement(double temperature, double humility)
+    public void SetMeasurements(double temperature, double humidity)
     {
         foreach(var observer in _observers)
         {
-            observer.Update(temperature, humility);
+            observer.Update(temperature, humidity);
         }
     }
 }
@@ -71,12 +71,12 @@ public class Program
 {
     public static void Main()
     {
-        var weatherStation = new WeatherStation();
+        var weather = new WeatherStation();
 
-        weatherStation.Subscribe(new CurrentConditionsDisplay());
-        weatherStation.Subscribe(new StaticsDisplay());
+        weather.Subscribe(new CurrentConditionsDisplay());
+        weather.Subscribe(new StaticsDisplay());
 
-        weatherStation.SetMeasurement(25, 60);
-        weatherStation.SetMeasurement(27, 70);
+        weather.SetMeasurements(25, 60);
+        weather.SetMeasurements(27, 70);
     }
 }

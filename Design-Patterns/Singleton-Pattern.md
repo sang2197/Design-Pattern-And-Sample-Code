@@ -6,34 +6,31 @@
 
 Chỉ có một thành phần:
 
-- **Singleton class:** tự quản lý instance duy nhất của chính nó — giấu constructor (đặt `private`) để bên ngoài không thể `new` trực tiếp, và cung cấp một static property/method để lấy về instance đó.
+- **Singleton class:** tự quản lý instance duy nhất của chính nó — giấu constructor (đặt `private`) để bên ngoài không thể `new` trực tiếp, và cung cấp một static property/method để lấy về instance đó. Trong C#, thường dùng `Lazy<T>` để việc khởi tạo chỉ xảy ra ở lần truy cập đầu tiên và an toàn khi nhiều luồng cùng gọi.
 
-## 2. Bài toán
+**Lưu ý:** Singleton dễ bị lạm dụng thành "global state" — nếu dùng tràn lan, code sẽ khó unit test (khó thay thế bằng mock/stub) và tạo phụ thuộc ẩn giữa các phần không liên quan. Chỉ nên dùng khi thực sự cần đúng một instance, không dùng chỉ vì tiện lợi khi truy cập.
 
-Một số tài nguyên trong hệ thống, về bản chất, chỉ nên tồn tại đúng một lần trong suốt vòng đời ứng dụng — ví dụ bộ đọc cấu hình, logger dùng chung, bộ đếm toàn cục. Nếu để code tự do `new` class đó ở nhiều nơi, mỗi nơi sẽ có một instance riêng, dẫn tới:
+## 2. Khi nào nên dùng
 
-- **Trạng thái không đồng nhất:** mỗi instance giữ dữ liệu khác nhau, dù đáng lẽ mọi nơi phải nhìn thấy cùng một trạng thái dùng chung.
-- **Lãng phí tài nguyên:** nếu việc khởi tạo class đó tốn kém (đọc file, mở kết nối...), tạo nhiều instance đồng nghĩa lặp lại chi phí đó nhiều lần không cần thiết.
-- **Không kiểm soát được số lượng instance:** không có cơ chế nào ngăn code ở một nơi khác vô tình tạo thêm một instance mới, phá vỡ giả định "chỉ có một" mà phần còn lại của hệ thống đang dựa vào.
+Dùng khi:
 
-## 3. Ý nghĩa của Singleton
+✅ Tài nguyên/đối tượng về bản chất chỉ nên tồn tại đúng một instance trong toàn ứng dụng
 
-- Đảm bảo **toàn bộ ứng dụng luôn thao tác trên cùng một trạng thái dùng chung**, không bị phân mảnh giữa nhiều instance.
-- Giấu constructor giúp **ngăn chặn hoàn toàn** việc tạo thêm instance ngoài ý muốn — đây là ràng buộc được đảm bảo bởi chính compiler, không phải chỉ là quy ước.
-- Cung cấp **một điểm truy cập duy nhất, thống nhất** trong toàn bộ codebase, dễ dàng biết chỗ nào đang thao tác với tài nguyên dùng chung này.
-- **Cần cẩn trọng khi dùng:** Singleton dễ bị lạm dụng thành "global state" — nếu dùng tràn lan, code sẽ khó unit test (khó thay thế bằng mock/stub) và tạo phụ thuộc ẩn giữa các phần không liên quan. Chỉ nên dùng khi có lý do thực sự cần đúng một instance, không dùng Singleton chỉ vì tiện lợi khi truy cập.
+✅ Nhiều nơi trong code cần truy cập cùng một trạng thái dùng chung
 
-## 4. Code mẫu
+✅ Việc khởi tạo tốn kém (đọc file, gọi API, mở kết nối...) và chỉ muốn thực hiện một lần
 
-Mỗi ví dụ dưới đây là một minh họa **đầy đủ** cho một tình huống khác nhau: nêu rõ khi nào nên dùng, cách sử dụng, và cách hiện thực (`Lazy<T>` để đảm bảo khởi tạo trễ và an toàn luồng), kèm một `Main` chạy thử để in kết quả ra console.
+✅ Cần kiểm soát chặt số lượng instance, không cho code bên ngoài tự `new`
+
+## 3. Code examples
 
 ### Ví dụ 1 — Đọc cấu hình ứng dụng một lần duy nhất
 
-**Khi nào dùng:** đọc file cấu hình (connection string, API key...) là thao tác tốn chi phí và kết quả không đổi trong suốt vòng đời ứng dụng — chỉ nên đọc đúng một lần rồi dùng lại.
+**Bài toán:** Ứng dụng cần đọc file cấu hình (connection string, API key...) khi chạy. Đây là thao tác tốn chi phí và kết quả không đổi trong suốt vòng đời ứng dụng. Nếu mỗi module tự `new AppSettings()` để đọc cấu hình, file sẽ bị đọc lặp lại nhiều lần không cần thiết, và nếu cấu hình được nạp ở những thời điểm khác nhau, mỗi module có thể nhìn thấy một giá trị khác nhau.
 
-**Cách sử dụng:** gọi `AppSettings.Instance` ở bất kỳ đâu cần cấu hình, thay vì tự `new AppSettings()`.
+**Ý nghĩa của Singleton trong ví dụ này:** `AppSettings` giấu constructor (`private`) và chỉ cho lấy instance qua `AppSettings.Instance`. Nhờ `Lazy<AppSettings>`, file cấu hình chỉ được đọc đúng một lần ở lần truy cập đầu tiên, và mọi nơi trong ứng dụng đều nhận về cùng một instance — cùng một giá trị cấu hình.
 
-**Cách hiện thực:** constructor `private`, dùng `Lazy<AppSettings>` để việc khởi tạo chỉ xảy ra ở lần truy cập đầu tiên và an toàn khi nhiều luồng cùng gọi.
+**Cách implementation (C#):**
 
 ```csharp
 public sealed class AppSettings
@@ -51,8 +48,11 @@ public sealed class AppSettings
 
     public static AppSettings Instance => _instance.Value;
 }
+```
 
-// Chạy thử
+**Cách sử dụng (C#):**
+
+```csharp
 public class Program
 {
     public static void Main()
@@ -69,111 +69,141 @@ public class Program
 // True
 ```
 
-Lưu ý dòng log `"Da doc cau hinh tu file"` chỉ in ra **đúng một lần**, dù `Instance` được gọi hai lần — chứng minh `settings2` không tạo instance mới mà tái sử dụng lại `settings1`.
+### Ví dụ 2 — Cache tỷ giá dùng chung cho nhiều service
 
-### Ví dụ 2 — Bộ đếm dùng chung trên toàn ứng dụng
+**Bài toán:** Hệ thống thương mại điện tử có nhiều service độc lập (`CheckoutService`, `InvoiceService`...) đều cần tỷ giá ngoại tệ để quy đổi sang VND, mà tỷ giá lấy từ một API bên ngoài rất tốn thời gian. Nếu mỗi service tự tạo cache tỷ giá riêng, API sẽ bị gọi lặp lại nhiều lần, và hai service có thể đang dùng hai bộ tỷ giá khác nhau tại cùng một thời điểm.
 
-**Khi nào dùng:** đếm tổng số request toàn hệ thống, được tăng lên từ nhiều nơi khác nhau trong code — nếu mỗi nơi giữ một biến đếm riêng thì con số cuối cùng sẽ sai.
+**Ý nghĩa của Singleton trong ví dụ này:** `ExchangeRateCache` chỉ có một instance duy nhất; API tỷ giá chỉ được gọi một lần khi instance được tạo, và mọi service dùng chung cùng một bộ tỷ giá. `CheckoutService` và `InvoiceService` không cần biết tới nhau, chỉ cần gọi `ExchangeRateCache.Instance`.
 
-**Cách sử dụng:** mọi nơi cần tăng bộ đếm chỉ cần gọi `RequestCounter.Instance.Increment()`.
-
-**Cách hiện thực:** tương tự Ví dụ 1, nhưng Singleton lần này giữ một trạng thái có thể thay đổi (`_count`) dùng chung.
+**Cách implementation (C#):**
 
 ```csharp
-public sealed class RequestCounter
+public sealed class ExchangeRateCache
 {
-    private static readonly Lazy<RequestCounter> _instance = new Lazy<RequestCounter>(() => new RequestCounter());
-    private int _count;
+    private static readonly Lazy<ExchangeRateCache> _instance = new Lazy<ExchangeRateCache>(() => new ExchangeRateCache());
+    private readonly Dictionary<string, decimal> _rates;
 
-    private RequestCounter()
+    private ExchangeRateCache()
     {
+        // Gia lap goi API ty gia ton kem - chi chay dung 1 lan
+        Console.WriteLine("[ExchangeRateCache] Da tai ty gia tu API");
+        _rates = new Dictionary<string, decimal> { ["USD"] = 25000m, ["EUR"] = 27000m };
     }
 
-    public static RequestCounter Instance => _instance.Value;
+    public static ExchangeRateCache Instance => _instance.Value;
 
-    public void Increment()
-    {
-        _count++;
-    }
-
-    public int GetCount() => _count;
+    public decimal ToVnd(string currency, decimal amount) => _rates[currency] * amount;
 }
 
-// Chạy thử
-public class Program
+public class CheckoutService
 {
-    public static void Main()
-    {
-        RequestCounter.Instance.Increment();
-        RequestCounter.Instance.Increment();
-        RequestCounter.Instance.Increment();
-
-        Console.WriteLine(RequestCounter.Instance.GetCount());
-    }
+    public decimal ConvertUsd(decimal usd) => ExchangeRateCache.Instance.ToVnd("USD", usd);
 }
-// 3
+
+public class InvoiceService
+{
+    public decimal ConvertEur(decimal eur) => ExchangeRateCache.Instance.ToVnd("EUR", eur);
+}
 ```
 
-### Ví dụ 3 — Logger dùng chung cho nhiều service khác nhau
-
-**Khi nào dùng:** nhiều service độc lập (`OrderService`, `PaymentService`...) đều cần ghi log vào cùng một nơi tập trung, thay vì mỗi service tự tạo một logger riêng.
-
-**Cách sử dụng:** các service không giữ tham chiếu logger qua constructor, mà gọi thẳng `AppLogger.Instance.Log(...)` khi cần.
-
-**Cách hiện thực:** giống Ví dụ 1 và 2, minh họa việc nhiều class không liên quan (`OrderService`, `PaymentService`) cùng chia sẻ một Singleton mà không cần biết tới nhau.
+**Cách sử dụng (C#):**
 
 ```csharp
-public sealed class AppLogger
-{
-    private static readonly Lazy<AppLogger> _instance = new Lazy<AppLogger>(() => new AppLogger());
-    private readonly List<string> _logs = new List<string>();
-
-    private AppLogger()
-    {
-    }
-
-    public static AppLogger Instance => _instance.Value;
-
-    public void Log(string message)
-    {
-        _logs.Add(message);
-        Console.WriteLine($"[Log] {message}");
-    }
-
-    public int LogCount => _logs.Count;
-}
-
-public class OrderService
-{
-    public void CreateOrder(string orderId)
-    {
-        AppLogger.Instance.Log($"Tao don hang {orderId}");
-    }
-}
-
-public class PaymentService
-{
-    public void Pay(string orderId)
-    {
-        AppLogger.Instance.Log($"Thanh toan don hang {orderId}");
-    }
-}
-
-// Chạy thử
 public class Program
 {
     public static void Main()
     {
-        var orderService = new OrderService();
-        var paymentService = new PaymentService();
+        var checkout = new CheckoutService();
+        var invoice = new InvoiceService();
 
-        orderService.CreateOrder("DH0001");
-        paymentService.Pay("DH0001");
-
-        Console.WriteLine($"Tong so log: {AppLogger.Instance.LogCount}");
+        Console.WriteLine(checkout.ConvertUsd(10));
+        Console.WriteLine(invoice.ConvertEur(5));
     }
 }
-// [Log] Tao don hang DH0001
-// [Log] Thanh toan don hang DH0001
-// Tong so log: 2
+// [ExchangeRateCache] Da tai ty gia tu API
+// 250000
+// 135000
+```
+
+### Ví dụ 3 — Print Manager quản lý hàng đợi in dùng chung
+
+**Bài toán:** Một ứng dụng văn phòng có nhiều module (`ReportService`, `InvoiceService`...) đều có thể gửi tài liệu tới cùng một máy in. Các tài liệu cần được đưa vào **một hàng đợi chung** và xử lý lần lượt. Nếu mỗi module tự `new PrintManager()`, hệ thống sẽ có nhiều hàng đợi độc lập, không còn một nơi duy nhất kiểm soát thứ tự các tài liệu đang chờ in.
+
+**Ý nghĩa của Singleton trong ví dụ này:** `PrintManager` được đảm bảo chỉ có một instance trong ứng dụng, vì vậy mọi module đều gửi tài liệu vào **cùng một hàng đợi**. Constructor được đặt `private` để bên ngoài không thể tự tạo thêm `PrintManager`, còn `PrintManager.Instance` cung cấp điểm truy cập tới instance duy nhất đó. `Lazy<PrintManager>` đảm bảo instance chỉ được tạo khi cần sử dụng lần đầu và an toàn khi nhiều luồng cùng truy cập.
+
+**Cách implementation (C#):**
+
+```csharp
+public sealed class PrintManager
+{
+    private static readonly Lazy<PrintManager> _instance =
+        new Lazy<PrintManager>(() => new PrintManager());
+
+    private readonly Queue<string> _printQueue = new Queue<string>();
+    private readonly object _lock = new object();
+
+    private PrintManager()
+    {
+    }
+
+    public static PrintManager Instance => _instance.Value;
+
+    public void AddJob(string document)
+    {
+        lock (_lock)
+        {
+            _printQueue.Enqueue(document);
+        }
+    }
+
+    public void PrintNext()
+    {
+        lock (_lock)
+        {
+            if (_printQueue.Count == 0)
+                return;
+
+            var document = _printQueue.Dequeue();
+            Console.WriteLine($"Dang in: {document}");
+        }
+    }
+}
+```
+
+**Cách sử dụng (C#):**
+
+```csharp
+public class ReportService
+{
+    public void PrintReport()
+    {
+        PrintManager.Instance.AddJob("BaoCaoThang.pdf");
+    }
+}
+
+public class InvoiceService
+{
+    public void PrintInvoice()
+    {
+        PrintManager.Instance.AddJob("HoaDon001.pdf");
+    }
+}
+
+public class Program
+{
+    public static void Main()
+    {
+        var reportService = new ReportService();
+        var invoiceService = new InvoiceService();
+
+        reportService.PrintReport();
+        invoiceService.PrintInvoice();
+
+        PrintManager.Instance.PrintNext();
+        PrintManager.Instance.PrintNext();
+    }
+}
+
+// Dang in: BaoCaoThang.pdf
+// Dang in: HoaDon001.pdf
 ```
