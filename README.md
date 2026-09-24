@@ -1,8 +1,8 @@
 # Design Pattern And Sample Code
 
-Repo tổng hợp báo cáo nghiên cứu về các design pattern và các nguyên tắc SOLID, thực hiện theo yêu cầu của mentor. Mỗi pattern/nguyên tắc được trình bày trong một file `.md` riêng, theo cấu trúc thống nhất: khái niệm cơ bản, khi nào nên dùng, và các code example minh họa.
+Repo tổng hợp báo cáo nghiên cứu về các design pattern, các nguyên tắc SOLID và các chủ đề nền tảng (ORM, Clean Code, Unit Test, API, thiết kế Database), thực hiện theo yêu cầu của mentor. Mỗi pattern/nguyên tắc được trình bày trong một file `.md` riêng, theo cấu trúc thống nhất: khái niệm cơ bản, khi nào nên dùng, và các code example minh họa.
 
-Tài liệu được chia thành 2 thư mục: [Design-Patterns/](Design-Patterns/) cho các design pattern, [SOLID/](SOLID/) cho 5 nguyên tắc SOLID.
+Tài liệu được chia theo thư mục: [Design-Patterns/](Design-Patterns/) cho các design pattern, [SOLID/](SOLID/) cho 5 nguyên tắc SOLID, và mỗi chủ đề nền tảng một thư mục riêng. Các tài liệu chủ đề nền tảng viết theo dạng ôn tập: lý thuyết ngắn gọn, ví dụ, câu hỏi hay gặp và phần tóm tắt học thuộc ở cuối.
 
 ## Danh sách báo cáo
 
@@ -40,3 +40,13 @@ Tài liệu được chia thành 2 thư mục: [Design-Patterns/](Design-Pattern
 | Liskov Substitution | [SOLID/Liskov-Substitution-Principle.md](SOLID/Liskov-Substitution-Principle.md) | Class con phải thay thế được class cha ở bất kỳ đâu mà không làm sai lệch tính đúng đắn của chương trình. |
 | Interface Segregation | [SOLID/Interface-Segregation-Principle.md](SOLID/Interface-Segregation-Principle.md) | Không buộc Client phụ thuộc vào method mà nó không dùng tới — tách interface lớn thành nhiều interface nhỏ. |
 | Dependency Inversion | [SOLID/Dependency-Inversion-Principle.md](SOLID/Dependency-Inversion-Principle.md) | Module cấp cao và module cấp thấp đều nên phụ thuộc vào abstraction, không phụ thuộc trực tiếp vào nhau. |
+
+### Chủ đề nền tảng
+
+| Chủ đề | File | Mô tả ngắn |
+|---|---|---|
+| ORM | [ORM/ORM.md](ORM/ORM.md) | Ánh xạ class ↔ bảng với EF Core: DbContext, mapping, migration, quan hệ, loading, N+1, change tracking, tối ưu. |
+| Clean Code | [Clean-Code/Clean-Code.md](Clean-Code/Clean-Code.md) | Đặt tên, hàm, comment, xử lý lỗi, DRY/KISS/YAGNI, code smell và refactoring. |
+| Unit Test | [Unit-Test/Unit-Test.md](Unit-Test/Unit-Test.md) | Test pyramid, F.I.R.S.T, AAA, xUnit, mock/stub, viết code dễ test, TDD, coverage. |
+| API | [API/API.md](API/API.md) | REST, HTTP method, status code, thiết kế URL, ASP.NET Core controller, JWT/OAuth2, versioning, phân trang. |
+| Thiết kế Database | [Database-Design/Database-Design.md](Database-Design/Database-Design.md) | Khóa, quan hệ, dị thường, phụ thuộc hàm, 1NF → 5NF, phi chuẩn hóa, index, transaction & ACID. |

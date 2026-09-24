@@ -116,29 +116,29 @@ public class Program
 
 **Bài toán:** Cách tính phí vận chuyển của một hệ thống bán hàng khác nhau tùy loại đơn hàng: giao tiêu chuẩn tính theo cân nặng, giao hỏa tốc tính phí cao hơn, còn đơn hàng đủ điều kiện thì được miễn phí vận chuyển. Nếu gộp toàn bộ các công thức này vào một hàm `CalculateShippingFee()` duy nhất bằng `if/switch`, hàm đó sẽ ngày càng phình to khi doanh nghiệp bổ sung thêm hình thức giao hàng mới (giao trong ngày, giao quốc tế...), và rất dễ tính sai phí nếu sửa nhầm nhánh điều kiện của loại vận chuyển khác.
 
-**Ý nghĩa của Strategy trong ví dụ này:** Mỗi công thức tính phí được tách thành một `ConcreteStrategy` riêng — `StandardShipping`, `ExpressShipping`, `FreeShipping` — cùng hiện thực `IShippingFeeStrategy`. `ShippingContext` chỉ gọi `_strategy.Calculate(...)` mà không biết và không cần biết công thức cụ thể bên trong từng loại. Việc chọn `IShippingFeeStrategy` nào dựa trên điều kiện nghiệp vụ (ví dụ đơn hàng đủ lớn thì dùng `FreeShipping`) được thực hiện ngay tại nơi gọi, tách biệt hoàn toàn khỏi logic tính phí bên trong `ShippingContext`; muốn thêm hình thức giao hàng mới chỉ cần thêm một `ConcreteStrategy` mới.
+**Ý nghĩa của Strategy trong ví dụ này:** Mỗi công thức tính phí được tách thành một `ConcreteStrategy` riêng — `StandardShipping`, `ExpressShipping`, `FreeShipping` — cùng hiện thực `IShippingFee`. `ShippingContext` chỉ gọi `_strategy.Calculate(...)` mà không biết và không cần biết công thức cụ thể bên trong từng loại. Việc chọn `IShippingFee` nào dựa trên điều kiện nghiệp vụ (ví dụ đơn hàng đủ lớn thì dùng `FreeShipping`) được thực hiện ngay tại nơi gọi, tách biệt hoàn toàn khỏi logic tính phí bên trong `ShippingContext`; muốn thêm hình thức giao hàng mới chỉ cần thêm một `ConcreteStrategy` mới.
 
 **Cách implementation (C#):**
 
 ```csharp
 // Strategy
-public interface IShippingFeeStrategy
+public interface IShippingFee
 {
     decimal Calculate(decimal orderTotal, decimal weightKg);
 }
 
 // ConcreteStrategy
-public class StandardShipping : IShippingFeeStrategy
+public class StandardShipping : IShippingFee
 {
     public decimal Calculate(decimal orderTotal, decimal weightKg) => 15000 + weightKg * 3000;
 }
 
-public class ExpressShipping : IShippingFeeStrategy
+public class ExpressShipping : IShippingFee
 {
     public decimal Calculate(decimal orderTotal, decimal weightKg) => 30000 + weightKg * 5000;
 }
 
-public class FreeShipping : IShippingFeeStrategy
+public class FreeShipping : IShippingFee
 {
     public decimal Calculate(decimal orderTotal, decimal weightKg) => 0;
 }
@@ -146,9 +146,9 @@ public class FreeShipping : IShippingFeeStrategy
 // Context
 public class ShippingContext
 {
-    private readonly IShippingFeeStrategy _strategy;
+    private readonly IShippingFee _strategy;
 
-    public ShippingContext(IShippingFeeStrategy strategy)
+    public ShippingContext(IShippingFee strategy)
     {
         _strategy = strategy;
     }
@@ -171,7 +171,7 @@ public class Program
         decimal orderTotal = 800000;
         decimal weightKg = 2;
 
-        IShippingFeeStrategy strategy = orderTotal >= 500000
+        IShippingFee strategy = orderTotal >= 500000
             ? new FreeShipping()
             : new StandardShipping();
 
@@ -188,25 +188,25 @@ public class Program
 
 **Bài toán:** Một hệ thống cần lưu các file do người dùng upload. Khi phát triển trên máy local, file có thể được lưu trực tiếp xuống ổ đĩa để đơn giản và tiết kiệm chi phí. Khi triển khai production trên cloud, hệ thống có thể cần chuyển sang Amazon S3 hoặc Azure Blob Storage. Mục tiêu vẫn là lưu file, nhưng cách kết nối và lưu trữ của từng provider hoàn toàn khác nhau. Nếu `FileService` trực tiếp chứa `if/switch` để xử lý Local, S3, Azure..., class này sẽ ngày càng phụ thuộc vào nhiều storage provider và phải sửa mỗi khi hệ thống bổ sung hoặc thay đổi phương thức lưu trữ.
 
-**Ý nghĩa của Strategy trong ví dụ này:** `IFileStorageStrategy` định nghĩa chung hành vi `Save()`, còn `LocalStorageStrategy`, `S3StorageStrategy` và `AzureBlobStorageStrategy` đóng gói riêng từng cách lưu file. `FileService` chỉ làm việc thông qua `IFileStorageStrategy`, không cần biết file thực tế được lưu xuống ổ đĩa local hay cloud provider nào. Strategy có thể được lựa chọn theo môi trường hoặc configuration khi khởi tạo `FileService`. Khi cần thêm một phương thức lưu trữ mới, chỉ cần thêm một `ConcreteStrategy` mới mà không phải sửa logic của `FileService`.
+**Ý nghĩa của Strategy trong ví dụ này:** `IFileStorage` định nghĩa chung hành vi `Save()`, còn `LocalStorage`, `S3Storage` và `AzureBlobstorage` đóng gói riêng từng cách lưu file. `FileService` chỉ làm việc thông qua `IFileStorage`, không cần biết file thực tế được lưu xuống ổ đĩa local hay cloud provider nào. Strategy có thể được lựa chọn theo môi trường hoặc configuration khi khởi tạo `FileService`. Khi cần thêm một phương thức lưu trữ mới, chỉ cần thêm một `ConcreteStrategy` mới mà không phải sửa logic của `FileService`.
 
 **Cách implementation (C#):**
 
 ```csharp
 // Strategy
-public interface IFileStorageStrategy
+public interface IFileStorage
 {
     string Save(string fileName);
 }
 
 // ConcreteStrategy
-public class LocalStorageStrategy : IFileStorageStrategy
+public class LocalStorage : IFileStorage
 {
     public string Save(string fileName)
         => $"Saved {fileName} to Local Storage";
 }
 
-public class S3StorageStrategy : IFileStorageStrategy
+public class S3Storage : IFileStorage
 {
     public string Save(string fileName)
         => $"Saved {fileName} to Amazon S3";
@@ -215,21 +215,21 @@ public class S3StorageStrategy : IFileStorageStrategy
 // Context
 public class FileService
 {
-    private IFileStorageStrategy _storageStrategy;
+    private IFileStorage _storage;
 
-    public FileService(IFileStorageStrategy storageStrategy)
+    public FileService(IFileStorage storage)
     {
-        _storageStrategy = storageStrategy;
+        _storage = storage;
     }
 
-    public void SetStorageStrategy(IFileStorageStrategy storageStrategy)
+    public void Setstorage(IFileStorage storage)
     {
-        _storageStrategy = storageStrategy;
+        _storage = storage;
     }
 
     public string SaveFile(string fileName)
     {
-        return _storageStrategy.Save(fileName);
+        return _storage.Save(fileName);
     }
 }
 ```
@@ -242,15 +242,15 @@ public class Program
     public static void Main()
     {
         var fileService = new FileService(
-            new LocalStorageStrategy());
+            new LocalStorage());
 
         Console.WriteLine(
             fileService.SaveFile("report.pdf"));
         // Saved report.pdf to Local Storage
 
         // Chuyển sang S3 mà không thay đổi FileService
-        fileService.SetStorageStrategy(
-            new S3StorageStrategy());
+        fileService.Setstorage(
+            new S3Storage());
 
         Console.WriteLine(
             fileService.SaveFile("report.pdf"));

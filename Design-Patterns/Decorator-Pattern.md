@@ -109,23 +109,23 @@ public class Program
 // 25000
 ```
 
-### Ví dụ 2 — Bổ sung Logging và Caching cho ProductService
+### Ví dụ 2 — Bổ sung Logging và Caching cho Product
 
-**Bài toán:** Một hệ thống bán hàng có `ProductService` chịu trách nhiệm lấy thông tin sản phẩm từ database. Sau đó hệ thống phát sinh thêm các yêu cầu như ghi log mỗi lần lấy sản phẩm và cache kết quả để giảm số lần truy vấn database. Nếu đưa trực tiếp toàn bộ logic logging và caching vào `ProductService`, class này sẽ phải xử lý cả business logic lẫn các cross-cutting concern không thuộc trách nhiệm chính của nó. Nếu dùng kế thừa để tạo các class như `LoggingProductService`, `CachingProductService`, `LoggingCachingProductService`..., số lượng subclass sẽ tăng nhanh khi có thêm các tính năng như retry, metrics hoặc authorization.
+**Bài toán:** Một hệ thống bán hàng có `Product` chịu trách nhiệm lấy thông tin sản phẩm từ database. Sau đó hệ thống phát sinh thêm các yêu cầu như ghi log mỗi lần lấy sản phẩm và cache kết quả để giảm số lần truy vấn database. Nếu đưa trực tiếp toàn bộ logic logging và caching vào `Product`, class này sẽ phải xử lý cả business logic lẫn các cross-cutting concern không thuộc trách nhiệm chính của nó. Nếu dùng kế thừa để tạo các class như `Logging`, `CachingProduct`, `LoggingCachingProduct`..., số lượng subclass sẽ tăng nhanh khi có thêm các tính năng như retry, metrics hoặc authorization.
 
-**Ý nghĩa của Decorator trong ví dụ này:** `ProductServiceDecorator` hiện thực cùng interface `IProductService` và giữ một `IProductService` khác bên trong. `LoggingProductServiceDecorator` chỉ bổ sung logging, còn `CachingProductServiceDecorator` chỉ chịu trách nhiệm caching. Vì tất cả đều cùng hiện thực `IProductService`, Client có thể bọc chúng theo nhiều cách khác nhau mà không cần sửa `ProductService`. Ví dụ có thể dùng `ProductService` trực tiếp, chỉ thêm cache, chỉ thêm logging, hoặc kết hợp cả logging và caching tùy theo cấu hình của hệ thống.
+**Ý nghĩa của Decorator trong ví dụ này:** `ProductDecorator` hiện thực cùng interface `IProduct` và giữ một `IProduct` khác bên trong. `LoggingDecorator` chỉ bổ sung logging, còn `CachingProductDecorator` chỉ chịu trách nhiệm caching. Vì tất cả đều cùng hiện thực `IProduct`, Client có thể bọc chúng theo nhiều cách khác nhau mà không cần sửa `Product`. Ví dụ có thể dùng `Product` trực tiếp, chỉ thêm cache, chỉ thêm logging, hoặc kết hợp cả logging và caching tùy theo cấu hình của hệ thống.
 
 **Cách implementation (C#):**
 
 ```csharp
 // Component
-public interface IProductService
+public interface IProduct
 {
     string GetProduct(int id);
 }
 
 // ConcreteComponent
-public class ProductService : IProductService
+public class Product : IProduct
 {
     public string GetProduct(int id)
     {
@@ -134,11 +134,11 @@ public class ProductService : IProductService
 }
 
 // Decorator
-public abstract class ProductServiceDecorator : IProductService
+public abstract class ProductDecorator : IProduct
 {
-    protected readonly IProductService Inner;
+    protected readonly IProduct Inner;
 
-    protected ProductServiceDecorator(IProductService inner)
+    protected ProductDecorator(IProduct inner)
     {
         Inner = inner;
     }
@@ -150,9 +150,9 @@ public abstract class ProductServiceDecorator : IProductService
 }
 
 // ConcreteDecorator - Logging
-public class LoggingProductServiceDecorator : ProductServiceDecorator
+public class LoggingDecorator : ProductDecorator
 {
-    public LoggingProductServiceDecorator(IProductService inner)
+    public LoggingDecorator(IProduct inner)
         : base(inner)
     {
     }
@@ -169,11 +169,11 @@ public class LoggingProductServiceDecorator : ProductServiceDecorator
 }
 
 // ConcreteDecorator - Caching
-public class CachingProductServiceDecorator : ProductServiceDecorator
+public class CachingProductDecorator : ProductDecorator
 {
     private readonly Dictionary<int, string> _cache = new();
 
-    public CachingProductServiceDecorator(IProductService inner)
+    public CachingProductDecorator(IProduct inner)
         : base(inner)
     {
     }
@@ -200,10 +200,10 @@ public class Program
 {
     public static void Main()
     {
-        IProductService service =
-            new LoggingProductServiceDecorator(
-                new CachingProductServiceDecorator(
-                    new ProductService()));
+        IProduct service =
+            new LoggingDecorator(
+                new CachingProductDecorator(
+                    new Product()));
 
         Console.WriteLine(service.GetProduct(1));
         // [LOG] Getting product 1
